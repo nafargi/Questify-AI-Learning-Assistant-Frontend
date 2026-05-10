@@ -31,8 +31,8 @@ export function Navbar() {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group ">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 transition-all duration-300 group-hover:scale-110 group-hover:shadow-primary/40">
-              <Sparkle className="w-6 h-6 text-primary-foreground" weight="fill" />
+            <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center shadow-lg shadow-primary/20 transition-all duration-300 group-hover:scale-110 group-hover:shadow-primary/40 p-1 border border-primary/20">
+              <img src="/main_logo.png" alt="Questify Logo" className="w-full h-full object-contain" />
             </div>
             <span className="text-2xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
               Questify
@@ -81,7 +81,7 @@ export function Navbar() {
               <SheetContent className="flex flex-col gap-8 pt-16">
                 <SheetHeader>
                   <SheetTitle className="flex items-center gap-2 font-black text-2xl">
-                    <Sparkle className="w-6 h-6 text-primary" weight="fill" />
+                    <img src="/main_logo.png" alt="Questify Logo" className="w-6 h-6 object-contain" />
                     Questify
                   </SheetTitle>
                 </SheetHeader>

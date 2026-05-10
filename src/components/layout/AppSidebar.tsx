@@ -119,8 +119,8 @@ function SidebarContent({
         collapsed ? "justify-center" : "justify-between"
       )}>
         <Link to="/" className="flex items-center gap-3" onClick={onNavigate}>
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20">
-            <GraduationCap className="h-5 w-5 text-primary-foreground" weight="fill" />
+          <div className="w-8 h-8 rounded-lg bg-background border border-primary/20 flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20 p-1">
+            <img src="/main_logo.png" alt="Questify Logo" className="w-full h-full object-contain" />
           </div>
           {!collapsed && (
             <span className="font-bold text-xl tracking-tight text-foreground">Questify</span>

@@ -17,12 +17,12 @@
     --popover: 0 0% 100%;
     --popover-foreground: 230 25% 10%;
 
-    /* Primary - Electric Blue */
-    --primary: 228 91% 59%;
+    /* Primary - Electric Blue (#375fff) */
+    --primary: 228 100% 61%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Soft Violet */
-    --secondary: 263 70% 58%;
+    /* Secondary - #138efd */
+    --secondary: 208 98% 53%;
     --secondary-foreground: 0 0% 100%;
 
     /* Muted */
@@ -66,10 +66,10 @@
     --sidebar-ring: 228 91% 59%;
 
     /* Questify Custom Tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(228 91% 59%) 0%, hsl(263 70% 58%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(228 100% 61%) 0%, hsl(208 98% 53%) 100%);
     --gradient-hero: linear-gradient(180deg, hsl(225 100% 99%) 0%, hsl(225 60% 97%) 100%);
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(225 30% 98%) 100%);
-    --gradient-glow: radial-gradient(ellipse at center, hsl(228 91% 59% / 0.15) 0%, transparent 70%);
+    --gradient-glow: radial-gradient(ellipse at center, hsl(228 100% 61% / 0.15) 0%, transparent 70%);
 
     /* Glassmorphism */
     --glass-background: hsl(0 0% 100% / 0.7);
@@ -98,10 +98,10 @@
     --popover: 222 35% 8%;
     --popover-foreground: 222 15% 95%;
 
-    --primary: 228 91% 65%;
+    --primary: 228 100% 65%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 263 70% 65%;
+    --secondary: 208 98% 60%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 222 20% 12%;
@@ -242,8 +242,8 @@
   /* Neural Network Pattern */
   .neural-pattern {
     background-image:
-      radial-gradient(circle at 20% 80%, hsl(228 91% 59% / 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, hsl(263 70% 58% / 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 20% 80%, hsl(228 100% 61% / 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, hsl(208 98% 53% / 0.1) 0%, transparent 50%),
       radial-gradient(circle at 40% 40%, hsl(174 62% 47% / 0.05) 0%, transparent 30%);
   }
 }
