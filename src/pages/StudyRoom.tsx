@@ -11,6 +11,7 @@ import { ActiveRecall } from "@/components/study/methods/ActiveRecall";
 import { Layout } from "@/components/layout/Layout";
 import { Collection } from "@/services/collectionsService";
 import { studyService } from "@/services/studyService";
+import { materialService } from "@/services/materialService";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Sparkle, CircleNotch, ArrowLeft, Warning } from "@phosphor-icons/react";
@@ -23,8 +24,7 @@ const SUPPORTED_METHODS: StudyMethodId[] = [
   "active_recall",
 ];
 
-// Methods that are self-contained (e.g. a timer) and can render
-// even when no backend session data exists yet.
+// Pomodoro is self-contained (timer) — works without backend-generated data
 const SELF_STARTING_METHODS: StudyMethodId[] = ["pomodoro"];
 
 // Maps a StudyMethodId to the matching named GET and POST service methods
@@ -64,10 +64,44 @@ export default function StudyRoom() {
   const [activeCollection, setActiveCollection] = useState<Collection | null>(null);
   const [activeMethod, setActiveMethod] = useState<StudyMethodId | null>(null);
 
+  // PDF state — fetched once per collection
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [isFetchingPdf, setIsFetchingPdf] = useState(false);
+
   // API Data States
   const [studyData, setStudyData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
+
+  // ── Fetch the PDF for the selected collection ─────────────────────────────
+  const fetchPdf = useCallback(async (collection: Collection) => {
+    setIsFetchingPdf(true);
+    setPdfUrl(null);
+
+    try {
+      // Fetch all materials for the user, then try the first one
+      const materials = await materialService.getMaterials();
+      if (materials.length === 0) {
+        console.warn("[StudyRoom] No materials found");
+        return;
+      }
+
+      const firstMaterialId = (materials[0] as any).material_id || materials[0].id;
+      if (!firstMaterialId) {
+        console.warn("[StudyRoom] Material has no id");
+        return;
+      }
+
+      const url = await materialService.getPdfBlobUrl(firstMaterialId);
+      setPdfUrl(url);
+      console.log("[StudyRoom] PDF blob URL fetched for material:", firstMaterialId);
+    } catch (err) {
+      console.error("[StudyRoom] Failed to fetch PDF:", err);
+      // Non-blocking — study methods still work without the PDF
+    } finally {
+      setIsFetchingPdf(false);
+    }
+  }, []);
 
   // ── Fetch existing data for the selected method + collection ──────────────
   const fetchStudyData = useCallback(
@@ -84,20 +118,13 @@ export default function StudyRoom() {
         console.error(`[StudyRoom] GET ${method} failed:`, error);
         if (error.response?.status === 404) {
           if (SELF_STARTING_METHODS.includes(method as StudyMethodId)) {
-            // Self-starting methods (e.g. Pomodoro timer) work without prior data.
-            // Set an empty object so the component still renders.
             setStudyData({});
           } else {
-            // Other methods need generated content — show the "Initialize" prompt.
-            toast.info(
-              "No study session found yet. Click Initialize to generate content."
-            );
+            toast.info("No study session found yet. Click Initialize to generate content.");
             setStudyData(null);
           }
         } else {
-          toast.error(
-            error.response?.data?.message || "Failed to load study data."
-          );
+          toast.error(error.response?.data?.message || "Failed to load study data.");
           setStudyData(null);
         }
       } finally {
@@ -116,9 +143,7 @@ export default function StudyRoom() {
 
     setIsInitializing(true);
     try {
-      console.log(
-        `[StudyRoom] Generating ${activeMethod} for collection ${collectionId}…`
-      );
+      console.log(`[StudyRoom] Generating ${activeMethod} for collection ${collectionId}…`);
       await svc.generate(collectionId);
       toast.success("Study session initialized!");
 
@@ -129,20 +154,16 @@ export default function StudyRoom() {
     } catch (error: any) {
       console.error(`[StudyRoom] Initialize ${activeMethod} failed:`, error);
       if (error.response?.status === 404) {
-        toast.error(
-          "This study technique is not yet available for this collection."
-        );
+        toast.error("This study technique is not yet available for this collection.");
       } else {
-        toast.error(
-          error.response?.data?.message || "Failed to initialize technique."
-        );
+        toast.error(error.response?.data?.message || "Failed to initialize technique.");
       }
     } finally {
       setIsInitializing(false);
     }
   };
 
-  // ── Auto-fetch when collection or method changes ──────────────────────────
+  // ── Auto-fetch study data when collection or method changes ───────────────
   useEffect(() => {
     if (activeCollection && activeMethod) {
       fetchStudyData(activeMethod, activeCollection.collection_id);
@@ -150,6 +171,18 @@ export default function StudyRoom() {
       setStudyData(null);
     }
   }, [activeCollection, activeMethod, fetchStudyData]);
+
+  // ── Fetch PDF when a collection is selected ───────────────────────────────
+  useEffect(() => {
+    if (activeCollection) {
+      fetchPdf(activeCollection);
+    } else {
+      // Revoke previous blob URL to free memory
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      setPdfUrl(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCollection]);
 
   // ── Clear study data when user picks a different collection ───────────────
   const handleCollectionSelect = (collection: Collection) => {
@@ -184,14 +217,11 @@ export default function StudyRoom() {
       return (
         <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
           <CircleNotch className="w-10 h-10 animate-spin text-primary" />
-          <p className="text-muted-foreground font-medium">
-            Retrieving cognitive assets…
-          </p>
+          <p className="text-muted-foreground font-medium">Retrieving cognitive assets…</p>
         </div>
       );
     }
 
-    // Self-starting methods always render even if studyData is empty
     const needsInit = !studyData && !SELF_STARTING_METHODS.includes(activeMethod);
 
     if (needsInit) {
@@ -237,7 +267,9 @@ export default function StudyRoom() {
     const commonProps = {
       chapterId: chapterId || "demo-chapter",
       courseId: courseId || "demo-course",
-      bookFilename: activeCollection.title,
+      bookTitle: activeCollection.title,
+      pdfUrl,                                   // ← authenticated blob URL
+      isFetchingPdf,
       collectionId: activeCollection.collection_id,
       studyData,
       onBack: () => setActiveMethod(null),
@@ -260,12 +292,9 @@ export default function StudyRoom() {
             <Warning className="w-12 h-12 mx-auto text-amber-500" />
             <h3 className="text-xl font-bold">Technique Integration Pending</h3>
             <p className="text-muted-foreground">
-              The <strong>{activeMethod}</strong> method is not yet fully
-              integrated with the production API.
+              The <strong>{activeMethod}</strong> method is not yet fully integrated with the production API.
             </p>
-            <Button onClick={() => setActiveMethod(null)}>
-              Back to Selection
-            </Button>
+            <Button onClick={() => setActiveMethod(null)}>Back to Selection</Button>
           </div>
         );
     }

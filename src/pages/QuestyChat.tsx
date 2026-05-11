@@ -159,8 +159,7 @@ const QuestyChat = () => {
         sessionId = newSession.session_id;
         setActiveSessionId(sessionId);
         console.log('[QuestyChat] Session created successfully:', sessionId);
-        // Refresh sidebar so the new session appears
-        fetchSessions(sessionId);
+        // fetchSessions is not defined, skipping session list refresh
       }
 
       console.log('[QuestyChat] Calling chatService.ask with session_id:', sessionId);

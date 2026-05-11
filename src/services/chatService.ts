@@ -95,8 +95,7 @@ export const chatService = {
         const url = '/api/chat/session';
         // TEMP: Hardcoded collection ID to prevent backend 500 until they make it truly optional
         const payload = {
-            title,
-            collection_id: "b529d8e6-e105-4da0-af8a-72e99de26df7"
+            title
         };
         console.log(`[Chat Service] ATTEMPTING: POST ${url}`, payload);
         try {
@@ -132,6 +131,23 @@ export const chatService = {
     //             message: error.message,
     //         });
     //         throw error;
-    //     }
     // },
+
+    /**
+     * GET /api/chat/sessions
+     * Retrieves all chat sessions for the current user.
+     */
+    getSessions: async (): Promise<ChatSession[]> => {
+        const url = '/api/chat/sessions';
+        console.log(`[Chat Service] GET ${url}`);
+        try {
+            const res = await apiClient.get(url);
+            const data = unwrap(res);
+            console.log(`[Chat Service] SUCCESS: ${url}`, data);
+            return Array.isArray(data) ? data : [];
+        } catch (error: any) {
+            console.error(`[Chat Service] GET ${url} failed`, error);
+            throw error;
+        }
+    },
 };

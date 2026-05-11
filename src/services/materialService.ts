@@ -45,6 +45,9 @@ export const materialService = {
     
     try {
       const response = await apiClient.post('/api/material/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
         onUploadProgress: (progressEvent) => {
           if (onProgress && progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -124,6 +127,80 @@ export const materialService = {
       console.error('--- Analyze Request End (Error) ---');
       console.error('Analyze error details:', error);
       throw error;
+    }
+  },
+
+  /**
+   * GET /api/material/
+   * Retrieves all materials for the current user.
+   */
+  getMaterials: async (): Promise<Material[]> => {
+    try {
+      const response = await apiClient.get('/api/material/');
+      const data = response.data.data ?? response.data;
+      return Array.isArray(data) ? data : [];
+    } catch (error: any) {
+      console.error('[materialService] getMaterials failed', error);
+      throw error;
+    }
+  },
+
+  /**
+   * GET /api/material/{material_id}
+   * Retrieves a specific material by ID.
+   */
+  getMaterial: async (materialId: string): Promise<Material> => {
+    try {
+      const response = await apiClient.get(`/api/material/${materialId}`);
+      return response.data.data ?? response.data;
+    } catch (error: any) {
+      console.error(`[materialService] getMaterial failed for ${materialId}`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * DELETE /api/material/{material_id}
+   * Deletes a specific material.
+   */
+  deleteMaterial: async (materialId: string): Promise<void> => {
+    try {
+      await apiClient.delete(`/api/material/${materialId}`);
+    } catch (error: any) {
+      console.error(`[materialService] deleteMaterial failed for ${materialId}`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * GET /api/material/{material_id}/file
+   * Fetches the PDF binary and returns a temporary blob URL for display.
+   */
+  getPdfBlobUrl: async (materialId: string): Promise<string | null> => {
+    try {
+      const response = await apiClient.get(`/api/material/${materialId}/file`, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      return URL.createObjectURL(blob);
+    } catch (error: any) {
+      console.error(`[materialService] getPdfBlobUrl failed for ${materialId}`, error);
+      return null;
+    }
+  },
+
+  /**
+   * GET /api/material/collections/{collection_id}/materials
+   * Retrieves the materials (with IDs) for a given collection.
+   */
+  getMaterialsByCollection: async (collectionId: string): Promise<Material[]> => {
+    try {
+      const response = await apiClient.get(`/api/material/collections/${collectionId}/materials`);
+      const data = response.data.data ?? response.data;
+      return Array.isArray(data) ? data : [];
+    } catch (error: any) {
+      console.error(`[materialService] getMaterialsByCollection failed for ${collectionId}`, error);
+      return [];
     }
   },
 };

@@ -7,82 +7,74 @@ export type { Collection };
 // ─── Response Shapes ─────────────────────────────────────────────────────────
 
 export interface PomodoroSession {
-  session_id?: string;
-  duration?: number;
-  completed?: boolean;
+  session_number: number;
+  task: string;
+  duration_minutes: number;
+  break_minutes: number;
+}
+
+export interface PomodoroData {
+  id?: string;
+  collection_id?: string;
+  title?: string;
+  sessions?: PomodoroSession[];
   created_at?: string;
   [key: string]: any;
 }
 
-export interface PomodoroData {
-  title?: string;
-  completed_sessions?: number;
-  sessions?: PomodoroSession[];
-  [key: string]: any;
-}
-
 export interface FeynmanData {
+  id?: string;
+  collection_id?: string;
   concept?: string;
   simple_explanation?: string;
   key_points?: string[];
   knowledge_gaps?: string[];
-  feedback?: string;
-  follow_up?: string;
-  history?: { role: string; content: string }[];
+  created_at?: string;
   [key: string]: any;
 }
 
 export interface LeitnerCard {
-  id?: string;
-  card_id?: string;
-  topic?: string;
   question: string;
   answer: string;
-  difficulty?: string;
-  box?: number;
   [key: string]: any;
 }
 
 export interface LeitnerBox {
-  box_number?: number;
-  level?: number;
+  box_number: number;
   cards: LeitnerCard[];
   [key: string]: any;
 }
 
 export interface LeitnerData {
+  id?: string;
   title?: string;
   boxes?: LeitnerBox[];
   [key: string]: any;
 }
 
-export interface SQ3RSection {
-  title: string;
-  content?: string;
-  [key: string]: any;
+export interface SQ3RSurvey {
+  headings: string[];
+  key_terms: string[];
 }
 
 export interface SQ3RData {
-  survey?: string;
+  id?: string;
+  survey?: SQ3RSurvey;
   questions?: string[];
   recite_points?: string[];
   review_summary?: string;
-  sections?: SQ3RSection[];
-  current_step?: string;
   [key: string]: any;
 }
 
 export interface ActiveRecallPrompt {
   question: string;
   hint?: string;
-  answer?: string;
-  [key: string]: any;
 }
 
 export interface ActiveRecallData {
+  id?: string;
   topic?: string;
   prompts?: ActiveRecallPrompt[];
-  questions?: ActiveRecallPrompt[];
   [key: string]: any;
 }
 
@@ -134,40 +126,46 @@ export const studyService = {
   getCollections: (): Promise<Collection[]> =>
     collectionsService.getCollections(),
 
+  // ── Helper: GET endpoints return arrays; unwrap to the first (most recent) item
+  _unwrapArray: (data: any): any => {
+    if (Array.isArray(data)) return data[0] ?? null;
+    return data ?? null;
+  },
+
   // Pomodoro
   generatePomodoro: (collectionId: string): Promise<PomodoroData> =>
     post('/api/study/pomodoro', { collection_id: collectionId }),
 
   getPomodoro: (collectionId: string): Promise<PomodoroData> =>
-    get(`/api/study/pomodoro/${collectionId}`),
+    get(`/api/study/pomodoro/${collectionId}`).then(d => Array.isArray(d) ? d[0] ?? null : d),
 
   // Feynman
   generateFeynman: (collectionId: string): Promise<FeynmanData> =>
     post('/api/study/feynman', { collection_id: collectionId }),
 
   getFeynman: (collectionId: string): Promise<FeynmanData> =>
-    get(`/api/study/feynman/${collectionId}`),
+    get(`/api/study/feynman/${collectionId}`).then(d => Array.isArray(d) ? d[0] ?? null : d),
 
   // Leitner
   generateLeitner: (collectionId: string): Promise<LeitnerData> =>
     post('/api/study/leitner', { collection_id: collectionId }),
 
   getLeitner: (collectionId: string): Promise<LeitnerData> =>
-    get(`/api/study/leitner/${collectionId}`),
+    get(`/api/study/leitner/${collectionId}`).then(d => Array.isArray(d) ? d[0] ?? null : d),
 
   // SQ3R
   generateSQ3R: (collectionId: string): Promise<SQ3RData> =>
     post('/api/study/sq3r', { collection_id: collectionId }),
 
   getSQ3R: (collectionId: string): Promise<SQ3RData> =>
-    get(`/api/study/sq3r/${collectionId}`),
+    get(`/api/study/sq3r/${collectionId}`).then(d => Array.isArray(d) ? d[0] ?? null : d),
 
   // Active Recall
   generateActiveRecall: (collectionId: string): Promise<ActiveRecallData> =>
     post('/api/study/active-recall', { collection_id: collectionId }),
 
   getActiveRecall: (collectionId: string): Promise<ActiveRecallData> =>
-    get(`/api/study/active-recall/${collectionId}`),
+    get(`/api/study/active-recall/${collectionId}`).then(d => Array.isArray(d) ? d[0] ?? null : d),
 
   // ── Generic helpers kept for backward-compat with method components ──────
   /** @deprecated Use the named generate* / get* methods instead. */
