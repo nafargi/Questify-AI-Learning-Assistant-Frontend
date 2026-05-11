@@ -1,50 +1,82 @@
-import { NoteContent } from "@/types/notes";
+import { MindMapNode, NoteContent } from "@/types/notes";
 import { cn } from "@/lib/utils";
+import { TreeStructure, Info } from "@phosphor-icons/react";
 
-export const MindMapNote = ({ content }: { content: NoteContent }) => {
+interface MindMapProps {
+  content: NoteContent;
+}
+
+const NodeRenderer = ({ node, level = 0 }: { node: MindMapNode; level?: number }) => {
   return (
-    <div className="flex flex-col items-center justify-center p-8 min-h-[600px] w-full overflow-x-auto">
-      {/* Center Node */}
-      <div className="relative z-10 w-48 h-48 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-center p-4 font-black text-xl shadow-2xl border-4 border-white/20 ring-4 ring-primary/10 animate-fade-in hover:scale-105 transition-transform">
-        {content.center || content.title}
+    <div className="flex flex-col items-center">
+      <div 
+        className={cn(
+          "p-4 rounded-2xl border-2 transition-all hover:scale-105 shadow-sm group relative",
+          level === 0 
+            ? "bg-primary text-primary-foreground border-primary w-48 text-center font-black text-lg" 
+            : "bg-card border-border min-w-[180px] max-w-[250px]"
+        )}
+      >
+        <p className={cn("font-bold", level === 0 ? "text-xl" : "text-sm")}>{node.label}</p>
+        {node.notes && (
+          <div className="mt-2 text-[10px] opacity-70 italic line-clamp-2 border-t pt-2 border-black/5">
+            {node.notes}
+          </div>
+        )}
+        
+        {/* Connection Line to Children */}
+        {node.children && node.children.length > 0 && (
+          <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-border" />
+        )}
       </div>
 
-      {/* Branches Container - Simplistic Radial Mock */}
-      <div className="flex flex-wrap justify-center gap-8 mt-16 w-full max-w-7xl">
-        {content.branches?.map((branch, i) => (
-          <div key={i} className="flex flex-col items-center flex-1 min-w-[250px] relative pointer-events-none">
-            {/* Visual Connector Line */}
-            <div className={cn("w-1 h-16 mb-4", branch.color.split(' ')[0].replace('text', 'bg'))} />
-
-            {/* Branch Node */}
-            <div className={cn(
-              "pointer-events-auto p-6 rounded-2xl border shadow-lg w-full transition-all hover:-translate-y-1 hover:shadow-xl",
-              branch.color
-            )}>
-              <h3 className="font-black text-lg mb-4 text-center pb-2 border-b border-black/10 uppercase tracking-widest">{branch.title}</h3>
-              <ul className="space-y-2">
-                {branch.items.map((item, idx) => (
-                  <li key={idx} className="font-medium text-sm flex items-start gap-2">
-                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-current opacity-50 shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-
-              {/* Sub-branches */}
-              {branch.subBranches?.map((sub, sIdx) => (
-                <div key={sIdx} className="mt-4 pt-4 border-t border-black/10">
-                  <h4 className="font-bold text-xs uppercase opacity-70 mb-2">{sub.title}</h4>
-                  <ul className="space-y-1 pl-2">
-                    {sub.items.map((subItem, si) => (
-                      <li key={si} className="text-xs opacity-90">• {subItem}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+      {node.children && node.children.length > 0 && (
+        <div className="flex gap-8 mt-12 relative">
+          {/* Horizontal Connector Line */}
+          {node.children.length > 1 && (
+            <div className="absolute -top-6 left-[10%] right-[10%] h-0.5 bg-border" />
+          )}
+          
+          {node.children.map((child, idx) => (
+            <div key={idx} className="relative pt-6">
+              {/* Vertical Tick to Horizontal Line */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-border" />
+              <NodeRenderer node={child} level={level + 1} />
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const MindMapNote = ({ content }: MindMapProps) => {
+  if (!content || !content.root) {
+    return (
+      <div className="p-20 text-center flex flex-col items-center gap-4 text-muted-foreground border-2 border-dashed rounded-[3rem]">
+        <TreeStructure className="w-12 h-12 opacity-20" />
+        <p className="text-sm font-medium">Mind map data structure is invalid or missing.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full overflow-x-auto py-12 px-4 scrollbar-hide">
+      <div className="flex flex-col items-center min-w-max mx-auto">
+        <NodeRenderer node={content.root} />
+      </div>
+
+      <div className="mt-20 p-6 rounded-3xl bg-primary/5 border border-primary/10 flex items-start gap-4 max-w-2xl mx-auto">
+        <div className="p-2 rounded-xl bg-primary/10 text-primary">
+          <Info className="w-5 h-5" />
+        </div>
+        <div className="space-y-1">
+          <h4 className="text-sm font-bold">Cognitive Map Insight</h4>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            This mind map visualizes the hierarchical relationships between key concepts. 
+            The central node represents your core topic, while branches represent sub-topics and details.
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -57,7 +57,9 @@ export default function NoteRoom({ topic, initialMethod, onClose }: NoteRoomProp
         try {
             console.log(`[NoteRoom] Fetching ${method} for collection ${topic.collectionId}`);
             const notes = await noteService.getNotes(method, topic.collectionId);
-            const content = (notes && notes.length > 0) ? (notes[0].content || notes[0]) : null;
+            
+            // The note object itself contains the cues/sections/boxes
+            const content = (notes && notes.length > 0) ? notes[0] : null;
 
             setHistory(prev => ({ ...prev, [method]: content }));
             setActiveContent(content);

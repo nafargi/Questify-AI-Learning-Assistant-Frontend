@@ -42,7 +42,7 @@ export const CodeRenderer: React.FC<CodeRendererProps> = ({
                     {problem_statement}
                 </div>
 
-                <div className="relative group rounded-3xl overflow-hidden border border-white/5 bg-[#0d1117] shadow-2xl transition-all duration-500 focus-within:ring-2 ring-primary/20">
+                <div className="relative group rounded-3xl overflow-hidden border border-white/5 bg-[#0d1117] transition-all duration-500 focus-within:ring-2 ring-primary/20">
                     <div className="bg-[#161b22] px-6 py-3 border-b border-white/5 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="flex gap-1.5">
@@ -80,7 +80,7 @@ export const CodeRenderer: React.FC<CodeRendererProps> = ({
                     />
 
                     <div className="absolute bottom-6 right-6 flex items-center gap-3">
-                        <div className="bg-primary/20 backdrop-blur-xl border border-primary/20 px-4 py-1.5 rounded-xl text-[10px] font-black font-mono text-primary-foreground/90 uppercase shadow-lg">
+                        <div className="bg-primary/20 backdrop-blur-xl border border-primary/20 px-4 py-1.5 rounded-xl text-[10px] font-black font-mono text-primary-foreground/90 uppercase">
                             {value ? `${value.length} characters` : '0 characters'}
                         </div>
                     </div>

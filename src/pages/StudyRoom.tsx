@@ -79,25 +79,28 @@ export default function StudyRoom() {
     setPdfUrl(null);
 
     try {
-      // Fetch all materials for the user, then try the first one
-      const materials = await materialService.getMaterials();
-      if (materials.length === 0) {
-        console.warn("[StudyRoom] No materials found");
+      // Get the materials that belong specifically to this collection
+      const materials = await materialService.getMaterialsByCollection(collection.collection_id);
+      
+      if (!materials || materials.length === 0) {
+        console.warn("[StudyRoom] No materials found for collection", collection.collection_id);
         return;
       }
 
-      const firstMaterialId = (materials[0] as any).material_id || materials[0].id;
-      if (!firstMaterialId) {
-        console.warn("[StudyRoom] Material has no id");
+      // Find the material ID (handle both id and material_id keys)
+      const mat = materials[0];
+      const materialId = (mat as any).material_id || mat.id;
+      
+      if (!materialId) {
+        console.warn("[StudyRoom] Material has no ID mapping", mat);
         return;
       }
 
-      const url = await materialService.getPdfBlobUrl(firstMaterialId);
+      const url = await materialService.getPdfBlobUrl(materialId);
       setPdfUrl(url);
-      console.log("[StudyRoom] PDF blob URL fetched for material:", firstMaterialId);
+      console.log("[StudyRoom] PDF successfully loaded for material:", materialId);
     } catch (err) {
       console.error("[StudyRoom] Failed to fetch PDF:", err);
-      // Non-blocking — study methods still work without the PDF
     } finally {
       setIsFetchingPdf(false);
     }
@@ -279,13 +282,13 @@ export default function StudyRoom() {
       case "pomodoro":
         return <PomodoroMethod {...commonProps} />;
       case "feynman":
-        return <FeynmanMethod {...commonProps} />;
+        return <FeynmanMethod bookTitle={activeCollection.title} collectionId={activeCollection.collection_id} studyData={studyData} onBack={() => setActiveMethod(null)} />;
       case "sq3r":
-        return <SQ3RMethod {...commonProps} />;
+        return <SQ3RMethod collectionId={activeCollection.collection_id} studyData={studyData} onBack={() => setActiveMethod(null)} />;
       case "leitner":
-        return <LeitnerSystem {...commonProps} />;
+        return <LeitnerSystem bookTitle={activeCollection.title} collectionId={activeCollection.collection_id} studyData={studyData} onBack={() => setActiveMethod(null)} />;
       case "active_recall":
-        return <ActiveRecall {...commonProps} />;
+        return <ActiveRecall collectionId={activeCollection.collection_id} studyData={studyData} onBack={() => setActiveMethod(null)} />;
       default:
         return (
           <div className="p-20 text-center space-y-4">

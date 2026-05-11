@@ -10,7 +10,7 @@ export const ChartingNote = ({ content }: { content: NoteContent }) => {
         <Table>
           <TableHeader className="bg-primary/5">
             <TableRow>
-              {content.headers?.map((header, i) => (
+              {content.columns?.map((header, i) => (
                 <TableHead key={i} className="font-black text-primary uppercase tracking-wider py-4">
                   {header}
                 </TableHead>

@@ -49,7 +49,7 @@ export function WeakPointAnalysisView({ results, questions, answers }: WeakPoint
             <div className="max-w-5xl mx-auto space-y-8">
                 {/* 1. Header & Summary Score */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card className="md:col-span-2 border-none shadow-2xl glass-card overflow-hidden relative">
+                    <Card className="md:col-span-2 border-border/50 glass-card overflow-hidden relative">
                         <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
                         <CardContent className="p-8">
                             <div className="flex items-center gap-3 mb-4">
@@ -68,12 +68,12 @@ export function WeakPointAnalysisView({ results, questions, answers }: WeakPoint
                     </Card>
 
                     <Card className={cn(
-                        "flex flex-col items-center justify-center p-8 border-none shadow-2xl text-white relative overflow-hidden group",
+                        "flex flex-col items-center justify-center p-8 border-none text-white relative overflow-hidden group",
                         scorePercentage >= 70 ? "bg-gradient-to-br from-green-500 via-emerald-600 to-teal-700" : "bg-gradient-to-br from-primary via-primary/90 to-primary/80"
                     )}>
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16 blur-3xl group-hover:scale-150 transition-transform duration-1000" />
                         <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80 mb-2">Efficiency Rating</span>
-                        <div className="text-6xl font-black tabular-nums drop-shadow-lg">
+                        <div className="text-6xl font-black tabular-nums">
                             {Math.round(totalScore)}<span className="text-2xl opacity-60">/{maxScore}</span>
                         </div>
                         <div className="text-sm font-black opacity-90 mt-2 bg-white/20 px-4 py-1 rounded-full backdrop-blur-md">
@@ -86,7 +86,7 @@ export function WeakPointAnalysisView({ results, questions, answers }: WeakPoint
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-1.5 h-8 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]" />
+                            <div className="w-1.5 h-8 bg-primary rounded-full" />
                             <h2 className="text-2xl font-black tracking-tight uppercase">Detailed Performance Log</h2>
                         </div>
                         <Badge variant="outline" className="px-4 py-1.5 rounded-full font-black border-primary/20 bg-primary/5 text-primary">
@@ -101,7 +101,7 @@ export function WeakPointAnalysisView({ results, questions, answers }: WeakPoint
                             const scoreAttained = item.score_attained ?? 0;
 
                             return (
-                                <Card key={item.question_id || index} className="group overflow-hidden border-border/50 hover:border-primary/30 transition-all duration-300 shadow-sm hover:shadow-xl glass-card">
+                                <Card key={item.question_id || index} className="group overflow-hidden border-border/50 hover:border-primary/30 transition-all duration-300 glass-card">
                                     <div className="flex flex-col md:flex-row">
                                         <div className={cn(
                                             "w-2 md:w-3 shrink-0 transition-colors duration-500",
@@ -167,7 +167,7 @@ export function WeakPointAnalysisView({ results, questions, answers }: WeakPoint
                         New Assessment
                     </Button>
                     <Button
-                        className="flex-1 rounded-2xl py-8 font-black uppercase tracking-widest text-xs shadow-2xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-95"
+                        className="flex-1 rounded-2xl py-8 font-black uppercase tracking-widest text-xs transition-all hover:scale-[1.02] active:scale-95"
                         onClick={() => navigate('/study-room')}
                     >
                         Back to Study Room

@@ -41,15 +41,15 @@ export const TFRenderer: React.FC<TFRendererProps> = ({
                         className={cn(
                             "flex flex-col items-center justify-center p-8 rounded-3xl border-2 transition-all gap-4 group relative overflow-hidden",
                             value === 'true'
-                                ? "border-green-500 bg-green-500/[0.03] shadow-xl shadow-green-500/10 scale-[1.02]"
+                                ? "border-green-500 bg-green-500/[0.03] scale-[1.02]"
                                 : "border-border/50 bg-card/40 hover:border-green-500/30 hover:bg-green-500/[0.01]"
                         )}
                     >
                         <div className={cn(
-                            "w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-500",
+                            "w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-500 border border-transparent",
                             value === 'true' 
-                                ? "bg-green-500 text-white shadow-lg shadow-green-500/40 rotate-6" 
-                                : "bg-muted text-muted-foreground group-hover:bg-green-500/10 group-hover:text-green-500"
+                                ? "bg-green-500 text-white rotate-6" 
+                                : "bg-card border-border/50 text-muted-foreground group-hover:border-green-500/50 group-hover:text-green-500"
                         )}>
                             <Check className="w-8 h-8" weight="bold" />
                         </div>
@@ -75,15 +75,15 @@ export const TFRenderer: React.FC<TFRendererProps> = ({
                         className={cn(
                             "flex flex-col items-center justify-center p-8 rounded-3xl border-2 transition-all gap-4 group relative overflow-hidden",
                             value === 'false'
-                                ? "border-destructive bg-destructive/[0.03] shadow-xl shadow-destructive/10 scale-[1.02]"
+                                ? "border-destructive bg-destructive/[0.03] scale-[1.02]"
                                 : "border-border/50 bg-card/40 hover:border-destructive/30 hover:bg-destructive/[0.01]"
                         )}
                     >
                         <div className={cn(
-                            "w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-500",
+                            "w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-500 border border-transparent",
                             value === 'false' 
-                                ? "bg-destructive text-white shadow-lg shadow-destructive/40 -rotate-6" 
-                                : "bg-muted text-muted-foreground group-hover:bg-destructive/10 group-hover:text-destructive"
+                                ? "bg-destructive text-white -rotate-6" 
+                                : "bg-card border-border/50 text-muted-foreground group-hover:border-destructive/50 group-hover:text-destructive"
                         )}>
                             <X className="w-8 h-8" weight="bold" />
                         </div>

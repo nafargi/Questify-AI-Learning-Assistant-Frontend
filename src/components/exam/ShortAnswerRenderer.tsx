@@ -37,7 +37,7 @@ export const ShortAnswerRenderer: React.FC<ShortAnswerRendererProps> = ({
                     </h3>
                 </div>
 
-                <div className="relative group rounded-3xl overflow-hidden border-2 border-border/50 bg-card/40 shadow-sm transition-all duration-300 focus-within:border-primary focus-within:bg-background focus-within:shadow-xl focus-within:shadow-primary/5">
+                <div className="relative group rounded-3xl overflow-hidden border-2 border-border/50 bg-card/40 transition-all duration-300 focus-within:border-primary focus-within:bg-background">
                     <div className="bg-muted/30 px-6 py-2.5 border-b border-border/50 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <PencilSimple className="w-4 h-4 text-primary" weight="bold" />

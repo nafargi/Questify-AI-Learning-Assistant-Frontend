@@ -25,12 +25,17 @@ export interface AnalyzeResponse {
 
 export interface Material {
   id: string;
+  material_id?: string;    // some backends use this
   title: string;
   name?: string;
   description: string;
   icon?: string;
   color?: string;
   created_at: string;
+  file_url?: string;        // direct CDN / storage URL to the PDF
+  url?: string;             // alternate field name
+  source_url?: string;      // alternate field name
+  collection_id?: string;   // if backend associates materials to collections
 }
 
 export const materialService = {
@@ -173,20 +178,50 @@ export const materialService = {
   },
 
   /**
-   * GET /api/material/{material_id}/file
-   * Fetches the PDF binary and returns a temporary blob URL for display.
+   * GET /api/material/{material_id}/file  (or direct file_url from material)
+   * Fetches the PDF and returns a blob URL for display in an iframe.
+   * Tries multiple strategies:
+   *   1. Use material.file_url / .url / .source_url directly (public CDN link)
+   *   2. Fetch /api/material/{id}/file as authenticated blob
+   *   3. Fetch /api/material/{id}/download as authenticated blob
    */
   getPdfBlobUrl: async (materialId: string): Promise<string | null> => {
+    // Strategy 1: fetch material metadata — it may contain a direct URL
     try {
-      const response = await apiClient.get(`/api/material/${materialId}/file`, {
-        responseType: 'blob',
-      });
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      return URL.createObjectURL(blob);
-    } catch (error: any) {
-      console.error(`[materialService] getPdfBlobUrl failed for ${materialId}`, error);
-      return null;
+      const meta = await materialService.getMaterial(materialId);
+      const directUrl = meta.file_url || meta.url || meta.source_url;
+      if (directUrl) {
+        console.log('[materialService] Using direct file_url from material metadata');
+        return directUrl;
+      }
+    } catch { /* fall through */ }
+
+    // Strategy 2 & 3: authenticated blob fetch from known endpoint patterns
+    const endpoints = [
+      `/api/material/${materialId}/file`,
+      `/api/material/${materialId}/download`,
+    ];
+    const BASE = apiClient.defaults.baseURL || '';
+    const token = localStorage.getItem('access_token');
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    for (const ep of endpoints) {
+      try {
+        const res = await fetch(`${BASE}${ep}`, { headers });
+        if (res.ok) {
+          const blob = await res.blob();
+          const objectUrl = URL.createObjectURL(
+            new Blob([blob], { type: blob.type || 'application/pdf' })
+          );
+          console.log('[materialService] PDF blob URL created from', ep);
+          return objectUrl;
+        }
+      } catch { /* try next */ }
     }
+
+    console.warn('[materialService] Could not fetch PDF for material', materialId);
+    return null;
   },
 
   /**

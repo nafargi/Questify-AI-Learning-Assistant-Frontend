@@ -42,13 +42,13 @@ export const MCQRenderer: React.FC<MCQRendererProps> = ({
                     disabled={disabled}
                     className="grid gap-3"
                 >
-                    {question.content.options.map((option, index) => (
+                    {question?.content?.options ? question.content.options.map((option, index) => (
                         <div
                             key={index}
                             className={cn(
                                 "flex items-center space-x-3 p-5 rounded-2xl border transition-all cursor-pointer group relative overflow-hidden",
                                 value === option
-                                    ? "border-primary bg-primary/[0.03] shadow-lg shadow-primary/5 ring-1 ring-primary"
+                                    ? "border-primary bg-primary/[0.03] ring-1 ring-primary"
                                     : "border-border/50 bg-card/40 hover:border-primary/50 hover:bg-primary/[0.02]"
                             )}
                             onClick={() => !disabled && onChange(option)}
@@ -75,7 +75,11 @@ export const MCQRenderer: React.FC<MCQRendererProps> = ({
                                 </div>
                             )}
                         </div>
-                    ))}
+                    )) : (
+                        <div className="p-4 rounded-xl border border-dashed text-center text-muted-foreground italic">
+                            No options provided for this question.
+                        </div>
+                    )}
                 </RadioGroup>
             </CardContent>
         </Card>

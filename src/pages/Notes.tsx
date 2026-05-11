@@ -199,7 +199,7 @@ export default function Notes() {
       id: note.id || note.note_id,
       title: note.title || "Generated Note",
       courseId: "AI-Studio",
-      [selectedMethodId]: note.content || note,
+      [selectedMethodId]: note,
       collectionId: selectedCollectionId
     };
 

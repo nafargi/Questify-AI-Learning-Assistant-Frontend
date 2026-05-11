@@ -56,9 +56,10 @@ export default function Exam() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [config, setConfig] = useState({
-    questionTypes: ['mcq'], // Multiple Choice as default
+    questionTypes: ['Multiple Choice'],
     questionCount: 10,
     difficulty: 'medium' as 'easy' | 'medium' | 'hard' | 'mixed',
+    selectedChapterIds: [] as string[],
   });
 
 
@@ -86,14 +87,30 @@ export default function Exam() {
   // Fetch chapters when collection is selected
   useEffect(() => {
     if (activeCollectionId) {
+      // Clear old chapters and selected IDs immediately to prevent desync
+      setChapters([]);
+      setConfig(p => ({ ...p, selectedChapterIds: [] }));
+      
       const fetchChapters = async () => {
         setIsLoadingChapters(true);
         try {
-          const data = await materialService.analyze(activeCollectionId);
-          setChapters(data.chapters || []);
+          const responseData = await materialService.analyze(activeCollectionId);
+          console.log("Analyze Response Data:", responseData);
+          
+          // Handle cases where data might be nested differently
+          const chs = responseData.chapters || (Array.isArray(responseData) ? responseData : []);
+          
+          setChapters(chs);
+          // Default select all chapters for the new material
+          if (chs.length > 0) {
+            setConfig(p => ({ ...p, selectedChapterIds: chs.map(c => c.chapter_id) }));
+          } else {
+            console.warn("No chapters found in analysis response");
+          }
         } catch (error) {
           console.error("Failed to fetch chapters for collection:", error);
           setChapters([]);
+          toast.error("Could not analyze this material. Please try again.");
         } finally {
           setIsLoadingChapters(false);
         }
@@ -101,6 +118,7 @@ export default function Exam() {
       fetchChapters();
     } else {
       setChapters([]);
+      setConfig(p => ({ ...p, selectedChapterIds: [] }));
     }
   }, [activeCollectionId]);
 
@@ -141,9 +159,9 @@ export default function Exam() {
     setIsGenerating(true);
     console.log("--- EXAM GENERATION START ---");
     try {
-      // Map question type IDs to labels for the backend strictly as requested
+      // Use labels directly or map them strictly
       const selectedTypeLabels = config.questionTypes.map(typeId => {
-        const type = questionTypes.find(t => t.id === typeId);
+        const type = questionTypes.find(t => t.id === typeId || t.label === typeId);
         return type ? type.label : typeId;
       });
 
@@ -152,8 +170,14 @@ export default function Exam() {
         ? "Medium" 
         : config.difficulty.charAt(0).toUpperCase() + config.difficulty.slice(1);
 
-      // Get all chapter IDs from the fetched chapters
-      const chapterIds = chapters.map(ch => ch.chapter_id);
+      // Use only selected chapter IDs
+      const chapterIds = config.selectedChapterIds.length > 0 
+        ? config.selectedChapterIds 
+        : chapters.map(ch => ch.chapter_id);
+
+      if (chapterIds.length === 0) {
+        throw new Error("No chapters selected. Please analyze your material first.");
+      }
 
       const requestPayload = {
         collection_id: activeCollectionId,
@@ -236,51 +260,54 @@ export default function Exam() {
   };
 
 
-  return (
-    <Layout 
-      showSidebar={step !== "exam"} 
-      title={step === "exam" ? "Practice Assessment" : "Exam Room"}
-    >
-      {step === "exam" ? (
-        questions.length > 0 ? (
-          <>
-            <ExamRoom
-              questions={questions}
-              answers={answers}
-              onAnswer={setAnswer}
-              timeLeft={timeLeft}
-              isFinished={isFinished}
-              onFinish={handleFinish}
-              results={results}
-              onReset={() => {
-                setStep("configure");
-                setQuestions([]);
-                setAnswers({});
-              }}
-            />
-            {isSubmitting && (
-              <div className="fixed inset-0 bg-background/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
-                <div className="relative">
-                  <CircleNotch className="w-16 h-16 text-primary animate-spin mb-6" weight="bold" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Brain className="w-6 h-6 text-primary animate-pulse" weight="fill" />
-                  </div>
-                </div>
-                <h2 className="text-2xl font-black tracking-tight mb-2">Analyzing Performance</h2>
-                <p className="text-muted-foreground max-w-xs mx-auto">Questy AI is grading your responses and generating a personalized mastery path.</p>
+  if (step === "exam") {
+    if (questions.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen text-center space-y-6 bg-background p-6">
+          <Warning className="w-16 h-16 text-destructive" weight="fill" />
+          <h2 className="text-2xl font-bold">Generation Desync</h2>
+          <p className="text-muted-foreground max-w-md mx-auto">The assessment state was lost or the questions were not received correctly.</p>
+          <Button onClick={() => setStep("configure")} variant="outline" className="rounded-full">Back to Configuration</Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="fixed inset-0 z-[100] bg-background">
+        <ExamRoom
+          key={examId || 'new-exam'}
+          questions={questions}
+          answers={answers}
+          onAnswer={setAnswer}
+          timeLeft={timeLeft}
+          isFinished={isFinished}
+          onFinish={handleFinish}
+          results={results}
+          onReset={() => {
+            setStep("configure");
+            setQuestions([]);
+            setAnswers({});
+          }}
+        />
+        {isSubmitting && (
+          <div className="fixed inset-0 bg-background/90 backdrop-blur-md z-[110] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
+            <div className="relative">
+              <CircleNotch className="w-16 h-16 text-primary animate-spin mb-6" weight="bold" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Brain className="w-6 h-6 text-primary animate-pulse" weight="fill" />
               </div>
-            )}
-          </>
-        ) : (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
-            <Warning className="w-16 h-16 text-destructive" weight="fill" />
-            <h2 className="text-2xl font-bold">Generation Desync</h2>
-            <p className="text-muted-foreground max-w-md mx-auto">The assessment state was lost or the questions were not received correctly.</p>
-            <Button onClick={() => setStep("configure")} variant="outline" className="rounded-full">Back to Configuration</Button>
+            </div>
+            <h2 className="text-2xl font-black tracking-tight mb-2">Analyzing Performance</h2>
+            <p className="text-muted-foreground max-w-xs mx-auto">Questy AI is grading your responses and generating a personalized mastery path.</p>
           </div>
-        )
-      ) : (
-        <div className="container py-6 max-w-6xl px-4 sm:px-6 relative">
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <Layout title="Exam Room">
+      <div className="container py-6 max-w-6xl px-4 sm:px-6 relative">
           {/* Generation Loading Overlay */}
           {isGenerating && (
             <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[60] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
@@ -315,7 +342,7 @@ export default function Exam() {
               {/* Step 1: Collection Selection */}
               <section className="space-y-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-black text-sm shadow-lg shadow-primary/20">01</div>
+                  <div className="w-10 h-10 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-black text-sm border border-primary/20">01</div>
                   <div>
                     <h2 className="text-xl font-bold tracking-tight">Select Study Collection</h2>
                     <p className="text-xs text-muted-foreground">Which material should Questy AI focus on?</p>
@@ -348,14 +375,14 @@ export default function Exam() {
                         className={cn(
                           "group relative p-5 rounded-2xl border transition-all duration-300 text-left h-full flex items-center gap-4",
                           activeCollectionId === collection.collection_id
-                            ? "border-primary bg-primary/[0.03] shadow-xl shadow-primary/5 ring-1 ring-primary"
+                            ? "border-primary bg-primary/[0.03] ring-1 ring-primary"
                             : "bg-card hover:bg-accent/50 border-border/50"
                         )}
                       >
                         <div className={cn(
                           "w-14 h-14 rounded-xl flex items-center justify-center text-2xl transition-all duration-500 shrink-0",
                           activeCollectionId === collection.collection_id 
-                            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 rotate-3 scale-110" 
+                            ? "bg-primary text-primary-foreground rotate-3 scale-110" 
                             : "bg-muted group-hover:scale-105"
                         )}>
                           {collection.icon || <GraduationCap weight="fill" />}
@@ -378,7 +405,7 @@ export default function Exam() {
               {/* Step 2: Customization */}
               <section className={cn("space-y-6 transition-all duration-500", !activeCollectionId && "opacity-50 blur-[1px] pointer-events-none")}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-black text-sm shadow-lg shadow-primary/20">02</div>
+                  <div className="w-10 h-10 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-black text-sm border border-primary/20">02</div>
                   <div>
                     <h2 className="text-xl font-bold tracking-tight">Configure Assessment</h2>
                     <p className="text-xs text-muted-foreground">Tailor the difficulty and scope of your session</p>
@@ -386,7 +413,7 @@ export default function Exam() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card className="rounded-2xl border-border/50 shadow-sm overflow-hidden group">
+                  <Card className="rounded-2xl border-border/50 overflow-hidden group">
                     <CardHeader className="bg-muted/30 pb-4">
                       <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
                         <Faders className="w-3.5 h-3.5 text-primary" weight="bold" />
@@ -422,7 +449,7 @@ export default function Exam() {
                               className={cn(
                                 "py-2.5 px-1 text-[10px] uppercase font-black rounded-xl border transition-all truncate",
                                 config.difficulty === level
-                                  ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 scale-105"
+                                  ? "bg-primary text-primary-foreground border-primary scale-105"
                                   : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
                               )}
                             >
@@ -448,20 +475,20 @@ export default function Exam() {
                             key={t.id}
                             onClick={() => setConfig(p => ({
                               ...p,
-                              questionTypes: p.questionTypes.includes(t.id)
-                                ? p.questionTypes.filter(id => id !== t.id)
-                                : [...p.questionTypes, t.id]
+                              questionTypes: p.questionTypes.includes(t.label)
+                                ? p.questionTypes.filter(label => label !== t.label)
+                                : [...p.questionTypes, t.label]
                             }))}
                             className={cn(
                               "flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all",
-                              config.questionTypes.includes(t.id)
-                                ? "bg-primary/5 border-primary text-primary font-bold shadow-sm"
-                                : "bg-card border-border/50 text-muted-foreground hover:bg-muted/50"
+                              config.questionTypes.includes(t.label)
+                                ? "bg-primary/5 border-primary text-primary font-bold shadow-none"
+                                : "bg-card border-border/50 text-muted-foreground hover:bg-muted/50 shadow-none"
                             )}
                           >
                             <div className={cn(
                               "w-8 h-8 rounded-lg flex items-center justify-center text-base",
-                              config.questionTypes.includes(t.id) ? "bg-primary text-primary-foreground" : "bg-muted"
+                              config.questionTypes.includes(t.label) ? "bg-primary text-primary-foreground" : "bg-muted"
                             )}>
                               {t.icon.length > 2 ? <Lightning weight="fill" className="w-4 h-4" /> : t.icon}
                             </div>
@@ -479,14 +506,66 @@ export default function Exam() {
                   </Card>
                 </div>
               </section>
+
+              {/* Step 3: Chapter Selection */}
+              <section className={cn("space-y-6 transition-all duration-500", !activeCollectionId && "opacity-50 blur-[1px] pointer-events-none")}>
+                 <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-black text-sm border border-primary/20">03</div>
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight">Scope Your Exam</h2>
+                    <p className="text-xs text-muted-foreground">Select specific sections from your document</p>
+                  </div>
+                </div>
+
+                {isLoadingChapters ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="h-16 rounded-2xl bg-muted animate-pulse border border-border/50" />
+                    ))}
+                  </div>
+                ) : chapters.length === 0 && activeCollectionId ? (
+                   <div className="p-6 rounded-2xl border border-dashed text-center text-muted-foreground">
+                      No chapters found in this material. Try another one.
+                   </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {chapters.map((chapter) => (
+                      <div
+                        key={chapter.chapter_id}
+                        onClick={() => setConfig(p => ({
+                          ...p,
+                          selectedChapterIds: p.selectedChapterIds.includes(chapter.chapter_id)
+                            ? p.selectedChapterIds.filter(id => id !== chapter.chapter_id)
+                            : [...p.selectedChapterIds, chapter.chapter_id]
+                        }))}
+                        className={cn(
+                          "p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3",
+                          config.selectedChapterIds.includes(chapter.chapter_id)
+                            ? "border-primary bg-primary/[0.03] ring-1 ring-primary"
+                            : "bg-card border-border/50 hover:border-primary/30"
+                        )}
+                      >
+                        <Checkbox 
+                          checked={config.selectedChapterIds.includes(chapter.chapter_id)} 
+                          className="mt-1"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-black truncate">CH {chapter.chapter_number}: {chapter.chapter_title}</p>
+                          <p className="text-[10px] text-muted-foreground line-clamp-1">{chapter.chapter_description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
             </div>
 
             <div className="lg:col-span-4">
               <div className="lg:sticky lg:top-24 space-y-6">
-                <Card className="rounded-3xl border-none shadow-2xl overflow-hidden glass-card relative">
+                <Card className="rounded-3xl border border-border/50 overflow-hidden glass-card relative">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-secondary to-primary animate-gradient-x" />
                   <CardHeader className="bg-primary/5 pb-6 px-6 pt-8">
-                    <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground mb-4 shadow-xl shadow-primary/30">
+                    <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground mb-4 shadow-none">
                       <RocketLaunch className="w-6 h-6" weight="fill" />
                     </div>
                     <CardTitle className="text-2xl font-black tracking-tight">Ready to Launch?</CardTitle>
@@ -519,8 +598,8 @@ export default function Exam() {
                     </div>
 
                     <Button
-                      className="w-full py-8 text-lg font-black rounded-2xl shadow-2xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-95 group overflow-hidden relative"
-                      disabled={!activeCollectionId || isGenerating}
+                      className="w-full py-8 text-lg font-black rounded-2xl transition-all hover:scale-[1.02] active:scale-95 group overflow-hidden relative shadow-none"
+                      disabled={!activeCollectionId || isGenerating || isLoadingChapters}
                       onClick={handleStart}
                     >
                       {isGenerating ? (
@@ -549,9 +628,9 @@ export default function Exam() {
                 </Card>
 
                 <Link to="/questy-chat" className="block group">
-                  <Card className="rounded-2xl border-none shadow-sm bg-accent/30 hover:bg-accent/50 transition-all cursor-pointer">
+                  <Card className="rounded-2xl border-none shadow-none bg-accent/30 hover:bg-accent/50 transition-all cursor-pointer">
                     <CardContent className="p-4 flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center text-accent-foreground shrink-0 shadow-sm transition-transform group-hover:rotate-12">
+                      <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center text-accent-foreground shrink-0 transition-transform group-hover:rotate-12">
                         <Brain className="w-6 h-6" weight="fill" />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -568,7 +647,6 @@ export default function Exam() {
             </div>
           </div>
         </div>
-      )}
     </Layout>
   );
 }

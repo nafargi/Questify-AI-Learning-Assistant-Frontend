@@ -102,7 +102,7 @@ const generateActivityData = () => {
 const FocusCard = ({ title, subtitle, action, imageGradient, onClick, disabled = false }: any) => (
   <div
     className={cn(
-      "relative overflow-hidden rounded-2xl md:rounded-3xl border bg-card p-6 md:p-8 group cursor-pointer transition-all duration-300 hover:shadow-xl",
+      "relative overflow-hidden rounded-2xl md:rounded-3xl border bg-card p-6 md:p-8 group cursor-pointer transition-all duration-300",
       disabled ? "opacity-60 cursor-not-allowed" : "hover:border-primary/50 hover:-translate-y-1"
     )}
     onClick={!disabled ? onClick : undefined}
@@ -132,7 +132,7 @@ const WeekOverview = () => {
   ];
 
   return (
-    <Card className="border rounded-2xl">
+    <Card className="border border-border/50 rounded-2xl">
       <CardHeader className="p-5 md:p-6">
         <CardTitle className="text-lg font-bold">Week Overview</CardTitle>
         <CardDescription className="text-xs">Daily focus vs learning efficiency</CardDescription>
@@ -271,7 +271,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <WeekOverview />
 
-          <Card className="border rounded-2xl lg:col-span-2">
+          <Card className="border border-border/50 rounded-2xl lg:col-span-2">
             <CardHeader className="p-5 md:p-6">
               <CardTitle className="text-lg font-bold">Learning Recommendations</CardTitle>
               <CardDescription className="text-xs">AI-powered suggestions based on your performance</CardDescription>
@@ -281,7 +281,7 @@ export default function Dashboard() {
                 {subjectData.slice(0, 3).map((subject, index) => (
                   <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl bg-muted/30 hover:bg-primary/5 border border-transparent hover:border-primary/10 transition-all gap-4">
                     <div className="flex items-center gap-4 min-w-0 w-full sm:w-auto">
-                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-background border shadow-sm flex items-center justify-center font-black text-primary shrink-0">
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-background border flex items-center justify-center font-black text-primary shrink-0">
                         {subject.subject.charAt(0)}
                       </div>
                       <div className="min-w-0 flex-1">

@@ -74,15 +74,22 @@ const QuestyChat = () => {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
-  const [inputValue, setInputValue] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
-
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
 
   // ── Data fetchers ──────────────────────────────────────────────────────────
+
+  const fetchSessions = async () => {
+    setIsLoadingSessions(true);
+    try {
+      const data = await chatService.getSessions();
+      setSessions(data);
+    } catch (error) {
+      console.error('[Chat] Failed to load sessions:', error);
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  };
 
   /** Loads messages for a given session. */
   const fetchMessages = async (sessionId: string) => {
@@ -100,6 +107,11 @@ const QuestyChat = () => {
   };
 
   // ── Effects ────────────────────────────────────────────────────────────────
+
+  // Initial load: sessions
+  useEffect(() => {
+    fetchSessions();
+  }, []);
 
   // Load messages whenever the selected session changes
   useEffect(() => {
@@ -133,12 +145,9 @@ const QuestyChat = () => {
     if (!inputValue.trim() || isTyping) return;
 
     const question = inputValue.trim();
-    console.log('[QuestyChat] handleSend triggered. Question:', question);
-
     setInputValue('');
     setIsTyping(true);
 
-    // Show the user's message immediately (optimistic update)
     const optimisticUserMsg: ChatMessage = {
       role: 'user',
       content: question,
@@ -149,28 +158,19 @@ const QuestyChat = () => {
     try {
       let sessionId = activeSessionId;
 
-      // If no session exists, create one first via the dedicated endpoint
       if (!sessionId) {
-        // Derive a title from the user's first message (max 30 chars)
         const sessionTitle = question.length > 30 ? question.substring(0, 27) + '...' : question;
-        console.log(`[QuestyChat] No active session. Creating one via POST  with title: "${sessionTitle}"...`);
-
         const newSession = await chatService.createSession(sessionTitle);
         sessionId = newSession.session_id;
         setActiveSessionId(sessionId);
-        console.log('[QuestyChat] Session created successfully:', sessionId);
-        // fetchSessions is not defined, skipping session list refresh
+        await fetchSessions(); // Refresh list to show the new session
       }
 
-      console.log('[QuestyChat] Calling chatService.ask with session_id:', sessionId);
       const response = await chatService.ask({
         question,
         session_id: sessionId,
       });
 
-      console.log('[QuestyChat] chatService.ask SUCCESS. Response:', response);
-
-      // Append the assistant reply
       const assistantMsg: ChatMessage = {
         role: 'assistant',
         content: response.answer,
@@ -179,26 +179,67 @@ const QuestyChat = () => {
       setMessages(prev => [...prev, assistantMsg]);
     } catch (error: any) {
       console.error('[QuestyChat] CRITICAL FAILURE:', error);
-
-      const errorDetail = error.response?.data || error.message;
-      const errorStatus = error.response?.status || 'Unknown';
-
-      toast.error(`Error ${errorStatus}: Check chat bubble for details.`);
-
-      // Show the FULL RAW ERROR in the chat bubble so you can't miss it
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: `🚨 SYSTEM ERROR (${errorStatus})\n\nRaw Response:\n\`\`\`json\n${JSON.stringify(errorDetail, null, 2)}\n\`\`\`\n\nPlease check if the endpoint exists or if the payload is correct.`,
-          created_at: new Date().toISOString(),
-        },
-      ]);
+      toast.error("AI service error. Please try again later.");
     } finally {
       setIsTyping(false);
-      console.log('[QuestyChat] handleSend finished.');
     }
   };
+
+  // ── Sidebar Component ──────────────────────────────────────────────────────
+
+  const SessionList = () => (
+    <div className="flex flex-col h-full gap-6">
+      <div className="px-2">
+        <Button 
+          onClick={createNewChat} 
+          className="w-full justify-start gap-2 h-11 rounded-xl bg-primary shadow-lg shadow-primary/20 font-bold"
+        >
+          <Plus className="w-4 h-4" weight="bold" />
+          New Conversation
+        </Button>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <p className="px-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">History</p>
+        <ScrollArea className="h-[calc(100vh-280px)] px-2">
+          <div className="space-y-1">
+            {isLoadingSessions && sessions.length === 0 ? (
+               <div className="py-10 text-center opacity-50 flex flex-col items-center gap-2">
+                 <CircleNotch className="w-5 h-5 animate-spin" />
+                 <span className="text-[10px] font-bold">Synchronizing...</span>
+               </div>
+            ) : sessions.length === 0 ? (
+              <div className="py-10 text-center opacity-40">
+                <p className="text-xs italic">No history yet</p>
+              </div>
+            ) : sessions.map(s => (
+              <button
+                key={s.session_id}
+                onClick={() => {
+                  setActiveSessionId(s.session_id);
+                  setMobileHistoryOpen(false);
+                }}
+                className={cn(
+                  "w-full text-left p-3 rounded-xl transition-all group flex items-center gap-3",
+                  activeSessionId === s.session_id 
+                    ? "bg-primary/10 text-primary border-primary/20" 
+                    : "hover:bg-muted border-transparent"
+                )}
+              >
+                <Clock className={cn("w-4 h-4 shrink-0", activeSessionId === s.session_id ? "text-primary" : "text-muted-foreground opacity-40")} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold truncate leading-none mb-1">{s.title || "Untitled Chat"}</p>
+                  <p className="text-[10px] opacity-40 font-medium">
+                    {new Date(s.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+    </div>
+  );
 
   // ── Sidebar ────────────────────────────────────────────────────────────────
 
@@ -206,16 +247,34 @@ const QuestyChat = () => {
 
   return (
     <DashboardLayout title="Questy AI Partner">
-      <div className="flex flex-col h-[calc(100vh-80px)] lg:h-[calc(100vh-110px)] max-w-4xl mx-auto w-full gap-4 lg:gap-6 p-3 lg:p-6 overflow-hidden">
+      <div className="flex h-[calc(100vh-80px)] lg:h-[calc(100vh-110px)] max-w-7xl mx-auto w-full gap-6 p-3 lg:p-6 overflow-hidden">
+        
+        {/* Desktop Sidebar */}
+        {!isMobile && (
+          <aside className="w-72 shrink-0 border-r pr-6 animate-in slide-in-from-left duration-500">
+            <SessionList />
+          </aside>
+        )}
+
         <Card className="flex-1 flex flex-col rounded-xl border-none relative glass-card overflow-hidden">
           {/* Mobile top bar */}
           {isMobile && (
             <div className="flex items-center justify-between px-4 py-3 border-b bg-background/80 backdrop-blur-xl sticky top-0 z-10">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Robot className="w-5 h-5 text-primary" weight="fill" />
+                <Sheet open={mobileHistoryOpen} onOpenChange={setMobileHistoryOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
+                      <List className="w-5 h-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-[300px] p-6 pt-12">
+                    <SessionList />
+                  </SheetContent>
+                </Sheet>
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Robot className="w-4 h-4 text-primary" weight="fill" />
                 </div>
-                <h2 className="font-bold text-sm">Questy AI</h2>
+                <h2 className="font-bold text-xs uppercase tracking-widest">Questy AI</h2>
               </div>
               <Button
                 onClick={createNewChat}
@@ -234,10 +293,10 @@ const QuestyChat = () => {
               /* Welcome / empty state */
               <motion.div
                 key="welcome"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.05 }}
-                className="flex-1 flex flex-col items-center justify-center p-6 lg:p-12 text-center overflow-y-auto"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="flex-1 flex flex-col items-center justify-center p-6 lg:p-12 text-center overflow-y-auto scrollbar-hide"
               >
                 <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-8 shadow-inner animate-bounce-subtle">
                   <Robot className="w-10 h-10 text-primary" weight="fill" />
@@ -277,12 +336,12 @@ const QuestyChat = () => {
               </motion.div>
             ) : (
               /* Conversation */
-              <ScrollArea className="flex-1 p-4 lg:p-10">
+              <ScrollArea className="flex-1 p-4 lg:p-10 scrollbar-hide">
                 <div className="space-y-6 max-w-3xl mx-auto">
                   {isLoadingMessages && messages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
                       <CircleNotch className="w-8 h-8 animate-spin text-primary" />
-                      <p className="text-sm font-bold uppercase tracking-widest">Loading...</p>
+                      <p className="text-sm font-bold uppercase tracking-widest">Synchronizing History...</p>
                     </div>
                   ) : (
                     <>
@@ -294,7 +353,7 @@ const QuestyChat = () => {
                             message.role === 'user' ? 'justify-end' : 'justify-start'
                           )}
                         >
-                          {message.role === 'assistant' && (
+                          {message.role !== 'user' && (
                             <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-xl bg-primary/10 flex flex-shrink-0 items-center justify-center shadow-sm self-end mb-2">
                               <Robot className="w-4 h-4 lg:w-5 lg:h-5 text-primary" weight="fill" />
                             </div>
@@ -376,9 +435,9 @@ const QuestyChat = () => {
           </AnimatePresence>
 
           {/* ── Input bar ── */}
-          <div className="p-3 lg:p-6 bg-background/50 backdrop-blur-md border-t">
+          <div className="p-3 lg:p-6 bg-background/50 backdrop-blur-md border-t mt-auto">
             <div className="max-w-3xl mx-auto relative">
-              <div className="flex flex-col bg-muted/30 border rounded-2xl focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5 transition-all overflow-hidden">
+              <div className="flex flex-col bg-muted/30 border rounded-2xl focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5 transition-all overflow-hidden shadow-inner">
                 <Textarea
                   ref={inputRef}
                   value={inputValue}
@@ -394,19 +453,19 @@ const QuestyChat = () => {
                   className="border-none focus-visible:ring-0 min-h-[40px] lg:min-h-[48px] max-h-[150px] lg:max-h-[200px] px-4 lg:px-5 py-2 lg:py-3 text-sm bg-transparent resize-none disabled:opacity-50"
                 />
 
-                <div className="flex items-center justify-between px-3 lg:px-4 py-1.5 lg:py-2 bg-muted/20 border-t">
+                <div className="flex items-center justify-between px-3 lg:px-4 py-1.5 lg:py-2 bg-muted/10 border-t">
                   <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 lg:h-9 lg:w-9 rounded-full text-muted-foreground"
+                      className="h-8 w-8 lg:h-9 lg:w-9 rounded-full text-muted-foreground hover:bg-primary/5 hover:text-primary transition-colors"
                     >
                       <Paperclip className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 lg:h-9 lg:w-9 rounded-full text-muted-foreground"
+                      className="h-8 w-8 lg:h-9 lg:w-9 rounded-full text-muted-foreground hover:bg-primary/5 hover:text-primary transition-colors"
                     >
                       <Microphone className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                     </Button>
@@ -415,7 +474,7 @@ const QuestyChat = () => {
                   <Button
                     onClick={handleSend}
                     disabled={!inputValue.trim() || isTyping}
-                    className="h-8 lg:h-10 px-4 lg:px-6 rounded-full font-bold gap-2 group transition-all active:scale-95 shadow-md shadow-primary/20 text-xs lg:text-sm"
+                    className="h-8 lg:h-10 px-4 lg:px-6 rounded-full font-bold gap-2 group transition-all active:scale-95 shadow-lg shadow-primary/20 text-xs lg:text-sm"
                   >
                     {isTyping ? (
                       <CircleNotch className="w-4 h-4 animate-spin" />

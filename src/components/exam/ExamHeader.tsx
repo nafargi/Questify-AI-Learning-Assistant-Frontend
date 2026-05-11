@@ -34,7 +34,7 @@ export function ExamHeader({
     const progress = (Object.keys(answers).length / questions.length) * 100;
 
     return (
-        <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl border-b border-border shadow-sm">
+        <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl border-b border-border">
             <div className="max-w-7xl mx-auto px-6 py-4">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-6">
@@ -73,7 +73,7 @@ export function ExamHeader({
                             Save Draft
                         </Button>
                         <Button
-                            className="gradient-primary shadow-lg shadow-primary/20 gap-2"
+                            className="gradient-primary gap-2"
                             onClick={onFinish}
                         >
                             <CheckCircle className="w-4 h-4" />
@@ -96,7 +96,7 @@ export function ExamHeader({
                                 className={cn(
                                     "flex-shrink-0 w-10 h-10 rounded-lg text-sm font-bold transition-all relative group",
                                     isCurrent
-                                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-2 ring-primary ring-offset-2 ring-offset-background"
+                                        ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 ring-offset-background"
                                         : isAnswered
                                             ? "bg-success/10 text-success border border-success/20 hover:bg-success/20"
                                             : "bg-muted text-muted-foreground hover:bg-muted/80 border border-transparent"

@@ -6,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
-import { PDFViewer } from "@/components/study/PDFViewer";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/services/api";
 import { toast } from "sonner";
@@ -22,8 +21,7 @@ interface FeynmanMethodProps {
 
 interface ChatMessage { sender: 'ai' | 'user'; text: string; type?: 'concept' | 'gap' | 'reply'; }
 
-export function FeynmanMethod({ bookTitle, pdfUrl, isFetchingPdf, collectionId, studyData, onBack }: FeynmanMethodProps) {
-    const [isSourceVisible, setIsSourceVisible] = useState(true);
+export function FeynmanMethod({ bookTitle, collectionId, studyData, onBack }: FeynmanMethodProps) {
     const [userInput, setUserInput] = useState("");
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -108,38 +106,6 @@ export function FeynmanMethod({ bookTitle, pdfUrl, isFetchingPdf, collectionId, 
             }
         >
             <div className="flex h-full animate-in fade-in duration-500 overflow-hidden bg-background">
-                {/* LEFT: PDF */}
-                <div className={cn(
-                    "transition-all duration-500 relative border-r overflow-hidden flex flex-col bg-slate-50/50",
-                    isSourceVisible ? "w-[40%] opacity-100" : "w-12 opacity-80"
-                )}>
-                    {isSourceVisible ? (
-                        <>
-                            {isFetchingPdf ? (
-                                <div className="flex items-center justify-center h-full gap-3 text-muted-foreground flex-col">
-                                    <CircleNotch className="w-6 h-6 animate-spin text-primary" />
-                                    <span className="text-xs font-medium">Loading document...</span>
-                                </div>
-                            ) : (
-                                <PDFViewer pdfUrl={pdfUrl} title={bookTitle} />
-                            )}
-                            <Button
-                                variant="secondary" size="sm"
-                                className="absolute top-4 right-4 z-50 shadow-md h-8 w-8 p-0 rounded-lg"
-                                onClick={() => setIsSourceVisible(false)}
-                            >
-                                <ArrowLeft className="w-4 h-4" />
-                            </Button>
-                        </>
-                    ) : (
-                        <div className="h-full flex flex-col items-center pt-8 gap-6">
-                            <Button variant="ghost" size="icon" onClick={() => setIsSourceVisible(true)} className="h-12 w-12 rounded-xl hover:bg-teal-50">
-                                <BookOpen className="w-6 h-6 text-teal-600" />
-                            </Button>
-                        </div>
-                    )}
-                </div>
-
                 {/* RIGHT: Chat */}
                 <div className="flex-1 flex flex-col relative bg-dot-pattern min-w-0">
                     <div className="flex-1 flex flex-col h-full max-w-2xl mx-auto w-full p-6 pb-0 gap-4">

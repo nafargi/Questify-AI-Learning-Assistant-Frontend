@@ -136,9 +136,9 @@ export function PDFViewer({ pdfUrl, title = "Document", onHighlight, className }
                             </div>
                         )}
                         <iframe
-                            src={`${pdfUrl}#toolbar=0&view=FitH`}
-                            className="w-full border-none"
-                            style={{ height: '100vh', minHeight: '600px' }}
+                            src={pdfUrl}
+                            className="w-full border-none min-h-[calc(100vh-100px)]"
+                            style={{ height: '100%' }}
                             title={title}
                             onLoad={() => setIframeLoaded(true)}
                         />

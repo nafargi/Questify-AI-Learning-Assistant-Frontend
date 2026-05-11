@@ -112,14 +112,14 @@ function SidebarContent({
   };
 
   return (
-    <div className="flex flex-col h-full bg-card border-r shadow-sm">
+    <div className="flex flex-col h-full bg-card border-r border-border/50">
       {/* Logo Header */}
       <div className={cn(
         "h-14 flex items-center px-6 border-b",
         collapsed ? "justify-center" : "justify-between"
       )}>
         <Link to="/" className="flex items-center gap-3" onClick={onNavigate}>
-          <div className="w-8 h-8 rounded-lg bg-background border border-primary/20 flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20 p-1">
+          <div className="w-8 h-8 rounded-lg bg-background border border-primary/20 flex items-center justify-center flex-shrink-0 p-1">
             <img src="/main_logo.png" alt="Questify Logo" className="w-full h-full object-contain" />
           </div>
           {!collapsed && (
@@ -241,7 +241,7 @@ export function AppSidebar() {
         <Button
           variant="ghost"
           size="icon"
-          className="fixed top-4 left-4 z-50 h-10 w-10 bg-card shadow-lg border text-foreground hover:bg-accent lg:hidden"
+          className="fixed top-4 left-4 z-50 h-10 w-10 bg-card border text-foreground hover:bg-accent lg:hidden"
           onClick={() => setMobileOpen(true)}
         >
           <List className="w-5 h-5" />
@@ -264,7 +264,7 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 h-screen z-40 transition-all duration-300 hidden lg:block shadow-sm",
+        "fixed left-0 top-0 h-screen z-40 transition-all duration-300 hidden lg:block",
         preferences.sidebarCollapsed ? "w-[72px]" : "w-64"
       )}
     >

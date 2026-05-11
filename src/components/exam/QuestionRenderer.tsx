@@ -15,6 +15,8 @@ interface QuestionRendererProps {
 }
 
 export function QuestionRenderer({ question, value, onChange, disabled }: QuestionRendererProps) {
+    if (!question) return <div className="p-8 text-center text-muted-foreground italic border-2 border-dashed rounded-3xl">Question data missing...</div>;
+
     switch (question.question_type) {
         case 'Multiple Choice':
             return (
