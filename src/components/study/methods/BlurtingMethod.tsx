@@ -4,19 +4,23 @@ import { Sparkle, Timer, Eye, EyeSlash, Check, Warning } from "@phosphor-icons/r
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { MOCK_CHAPTERS } from "@/data/mockChapters";
 
 type BlurtingPhase = 'READ' | 'BLURT' | 'REVIEW';
 
-export function BlurtingMethod({ onBack, collectionId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; collectionId?: string }) {
+export function BlurtingMethod({ onBack, chapterId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string }) {
     const [phase, setPhase] = useState<BlurtingPhase>('READ');
     const [timeLeft, setTimeLeft] = useState(300); // 5 minutes initial read
     const [userNotes, setUserNotes] = useState("");
     const [isTimerRunning, setIsTimerRunning] = useState(true);
 
     // Get content
-    const content = "Blurting is a technique where you read a section of text for a set time, then close the book and write down everything you remember. This forces active recall and identifies gaps in your knowledge.";
-    const title = "Blurting Practice";
+    const content = MOCK_CHAPTERS[chapterId || '']?.sections?.[0]?.content ||
+        "Blurting is a technique where you read a section of text for a set time, then close the book and write down everything you remember. This forces active recall and identifies gaps in your knowledge.";
+
+    const title = MOCK_CHAPTERS[chapterId || '']?.sections?.[0]?.title || "Blurting Practice";
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -26,7 +30,7 @@ export function BlurtingMethod({ onBack, collectionId }: { onBack: () => void; b
             handleStartBlurting();
         }
         return () => clearInterval(interval);
-    }, [isTimerRunning, timeLeft, phase, collectionId]);
+    }, [isTimerRunning, timeLeft, phase]);
 
     const formatTime = (secs: number) => {
         const m = Math.floor(secs / 60);
@@ -79,7 +83,7 @@ export function BlurtingMethod({ onBack, collectionId }: { onBack: () => void; b
                             <p className="leading-loose">{content}</p>
                             <p className="leading-loose mt-4">
                                 Neuroplasticity is the brain's ability to reorganize itself by forming new neural connections throughout life.
-                                Neuroplasticity allows the neurons ( nerve cells) in the brain to compensate for injury and disease and to adjust their activities in response to new situations or to changes in their environment.
+                                Neuroplasticity allows the neurons (nerve cells) in the brain to compensate for injury and disease and to adjust their activities in response to new situations or to changes in their environment.
                             </p>
                         </ScrollArea>
                     </div>

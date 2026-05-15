@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { MOCK_FLASHCARDS } from "@/data/mockFlashcards"; // Using flashcards as "problems"
 
-export function InterleavedPractice({ onBack, collectionId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; collectionId?: string }) {
+export function InterleavedPractice({ onBack }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string }) {
     const [timeLeft, setTimeLeft] = useState(300); // 5 minutes per block
     const [currentTopicIdx, setCurrentTopicIdx] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
@@ -32,7 +32,7 @@ export function InterleavedPractice({ onBack, collectionId }: { onBack: () => vo
             handleSwitchTopic();
         }
         return () => clearInterval(interval);
-    }, [isPaused, timeLeft, collectionId]);
+    }, [isPaused, timeLeft]);
 
     const handleSwitchTopic = () => {
         setCurrentTopicIdx(prev => (prev + 1) % TOPICS.length);

@@ -25,7 +25,7 @@ export interface Question {
   type: 'mcq' | 'true-false' | 'fill-blank' | 'matching' | 'coding' | 'short-answer';
   difficulty: 'easy' | 'medium' | 'hard';
   question: string;
-  options?: string[];
+  options?: string[]; 
   correctAnswer: string | string[];
   explanation: string;
   timeEstimate: number;

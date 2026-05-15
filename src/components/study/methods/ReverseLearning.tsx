@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { StudySessionLayout } from "@/components/study/StudySessionLayout";
 import { ArrowLeft, ArrowRight, Code, Key, List, CheckCircle } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
@@ -7,11 +7,12 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
-export function ReverseLearning({ onBack, collectionId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; collectionId?: string }) {
+export function ReverseLearning({ onBack }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string }) {
+    const [step, setStep] = useState(0);
     const [revealedSteps, setRevealedSteps] = useState<number[]>([]);
 
     const PROBLEM = {
-        title: "How does React Fiber work?",
+        title: "How does React useFiber work?",
         solution_code: `
 function workLoop(deadline) {
   let shouldYield = false;
@@ -59,20 +60,14 @@ function workLoop(deadline) {
                             <pre className="text-cyan-100/90 whitespace-pre-wrap">
                                 {PROBLEM.solution_code}
                             </pre>
-                            <div className="absolute top-4 right-4 p-2 bg-slate-800 rounded-lg text-cyan-500">
-                                <Code className="w-5 h-5" />
-                            </div>
                         </Card>
                     </div>
 
-                    {/* Right: The Breakdown (How we got there) */}
-                    <div className="w-full md:w-1/2 flex flex-col bg-background">
-                        <div className="p-6 border-b flex items-center justify-between">
-                            <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Identify Core Principles</h3>
-                            <div className="flex items-center gap-2">
-                                <Key className="w-4 h-4 text-cyan-500" />
-                                <span className="text-xs font-bold text-cyan-600">{revealedSteps.length} / {PROBLEM.principles.length}</span>
-                            </div>
+                    {/* Right: The Breakdown (Principles) */}
+                    <div className="w-full md:w-1/2 flex flex-col bg-cyan-50/20 dark:bg-cyan-950/10">
+                        <div className="p-6 border-b bg-background/50 backdrop-blur">
+                            <h3 className="text-cyan-600 dark:text-cyan-400 font-bold uppercase tracking-wider text-xs mb-2">Working Backwards</h3>
+                            <p className="text-sm text-muted-foreground">Identify the core principles that make this solution work.</p>
                         </div>
 
                         <ScrollArea className="flex-1 p-6">
@@ -82,7 +77,7 @@ function workLoop(deadline) {
                                         <button
                                             onClick={() => toggleStep(idx)}
                                             className={cn(
-                                                "w-full text-left p-6 rounded-2xl border-2 transition-all duration-300 flex gap-4 items-start",
+                                                "w-full text-left p-4 border transition-all duration-300 flex items-start gap-4",
                                                 revealedSteps.includes(idx)
                                                     ? "bg-background border-cyan-500 shadow-md"
                                                     : "bg-muted/50 border-transparent hover:bg-muted"

@@ -3,9 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { authService } from "../services/authService";
-import { useAuth } from "@/contexts/AuthContext";
-
 import {
   Brain,
   Eye,
@@ -31,7 +28,6 @@ const Auth = () => {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { login: contextLogin, register: contextRegister } = useAuth();
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -103,107 +99,34 @@ const Auth = () => {
     return isValid;
   };
 
-  const resetForm = () => {
-    setEmail("");
-    setPassword("");
-    setConfirmPassword("");
-    setName("");
-    setErrors({});
-    setTouched({});
-  };
-
-  const clearFieldError = (field: string) => {
-    setErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors[field];
-      return newErrors;
-    });
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    // Clear error for this field when user starts typing
-    clearFieldError(field);
-    clearFieldError("form");
-
-    // Update the field
-    switch (field) {
-      case "email":
-        setEmail(value);
-        break;
-      case "password":
-        setPassword(value);
-        break;
-      case "confirmPassword":
-        setConfirmPassword(value);
-        break;
-      case "name":
-        setName(value);
-        break;
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) return;
 
     setIsLoading(true);
-    setErrors({});
 
-    try {
-      if (isSignUp) {
-        // Sign Up - API Call
-        await contextRegister(email, password, name);
-        
-        toast({
-          title: "Verification Required",
-          description: "Please check your email for the OTP verification code.",
-        });
-        navigate("/verify-otp", { state: { email } });
-        resetForm();
-      } else {
-        // Sign In - API Call
-        await contextLogin(email, password);
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
-        toast({
-          title: "Welcome back",
-          description: "Let's continue where you left off.",
-        });
+    setIsLoading(false);
 
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 100);
-      }
-    } catch (error: any) {
-      console.error("Auth error:", error);
-      let errorMsg = error.response?.data?.message || error.response?.data?.detail || error.message || "Network error. Please try again.";
-      
-      if (isSignUp) {
-        if (errorMsg.toLowerCase().includes("already") || errorMsg.toLowerCase().includes("exists")) {
-          errorMsg = "This email is already registered. Please login instead.";
-          setIsSignUp(false);
-          resetForm();
-        }
-      } else {
-        if (errorMsg.toLowerCase().includes("verify") || errorMsg.toLowerCase().includes("verified") || errorMsg.toLowerCase().includes("otp")) {
-          errorMsg = "Please verify your email first. Check your inbox for OTP.";
-        }
-      }
+    toast({
+      title: isSignUp ? "Account created" : "Welcome back",
+      description: isSignUp
+        ? "Your learning journey begins now."
+        : "Let's continue where you left off.",
+    });
 
-      setErrors({ form: errorMsg });
-      toast({
-        title: isSignUp ? "Registration failed" : "Login failed",
-        description: errorMsg,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    navigate("/dashboard");
   };
 
   const toggleMode = () => {
     setIsSignUp(!isSignUp);
-    resetForm();
+    setErrors({});
+    setTouched({});
+    setPassword("");
+    setConfirmPassword("");
   };
 
   const getInputState = (field: string) => {
@@ -228,11 +151,13 @@ const Auth = () => {
     <div className="min-h-screen flex">
       {/* Left Panel - Branding & Trust */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+        {/* Animated Background Elements */}
         <div className="absolute inset-0 neural-pattern" />
         <div className="absolute top-20 left-20 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse-slow" />
         <div className="absolute bottom-20 right-20 w-96 h-96 bg-secondary/10 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: "1s" }} />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-accent/5 rounded-full blur-2xl animate-float" />
 
+        {/* Grid Pattern */}
         <div
           className="absolute inset-0 opacity-[0.02]"
           style={{
@@ -242,7 +167,9 @@ const Auth = () => {
           }}
         />
 
+        {/* Content */}
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
+          {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow transition-transform group-hover:scale-105">
               <Brain className="w-5 h-5 text-primary-foreground" />
@@ -252,6 +179,7 @@ const Auth = () => {
             </span>
           </Link>
 
+          {/* Main Message */}
           <div className="space-y-8 max-w-md">
             <div className="space-y-4">
               <h1 className="text-4xl font-bold tracking-tight leading-tight">
@@ -265,6 +193,7 @@ const Auth = () => {
               </p>
             </div>
 
+            {/* Trust Indicators */}
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -302,6 +231,7 @@ const Auth = () => {
             </div>
           </div>
 
+          {/* Footer Quotes */}
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground italic">
               "The only way to master something is to know exactly where you're weak."
@@ -315,6 +245,7 @@ const Auth = () => {
 
       {/* Right Panel - Auth Form */}
       <div className="w-full lg:w-1/2 flex flex-col">
+        {/* Mobile Header */}
         <div className="lg:hidden p-6 border-b border-border">
           <Link to="/" className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
@@ -326,8 +257,10 @@ const Auth = () => {
           </Link>
         </div>
 
+        {/* Form Container */}
         <div className="flex-1 flex items-center justify-center p-6 sm:p-12">
           <div className="w-full max-w-md space-y-8">
+            {/* Header */}
             <div className="space-y-2 text-center lg:text-left">
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
                 {isSignUp ? "Begin your journey" : "Welcome back"}
@@ -340,7 +273,9 @@ const Auth = () => {
               </p>
             </div>
 
+            {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Name Field (Sign Up Only) */}
               {isSignUp && (
                 <div className="space-y-2 animate-slide-down">
                   <Label htmlFor="name" className="text-sm font-medium">
@@ -351,7 +286,7 @@ const Auth = () => {
                     type="text"
                     placeholder="Enter your name"
                     value={name}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
+                    onChange={(e) => setName(e.target.value)}
                     onBlur={() => handleBlur("name")}
                     className={`h-12 px-4 transition-all duration-200 ${inputStateClasses("name")}`}
                   />
@@ -364,6 +299,7 @@ const Auth = () => {
                 </div>
               )}
 
+              {/* Email Field */}
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">
                   Email address
@@ -374,7 +310,7 @@ const Auth = () => {
                     type="email"
                     placeholder="you@example.com"
                     value={email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    onChange={(e) => setEmail(e.target.value)}
                     onBlur={() => handleBlur("email")}
                     className={`h-12 px-4 pr-10 transition-all duration-200 ${inputStateClasses("email")}`}
                   />
@@ -390,6 +326,7 @@ const Auth = () => {
                 )}
               </div>
 
+              {/* Password Field */}
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-sm font-medium">
                   Password
@@ -400,7 +337,7 @@ const Auth = () => {
                     type={showPassword ? "text" : "password"}
                     placeholder={isSignUp ? "Create a secure password" : "Enter your password"}
                     value={password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
+                    onChange={(e) => setPassword(e.target.value)}
                     onBlur={() => handleBlur("password")}
                     className={`h-12 px-4 pr-12 transition-all duration-200 ${inputStateClasses("password")}`}
                   />
@@ -430,6 +367,7 @@ const Auth = () => {
                 )}
               </div>
 
+              {/* Confirm Password Field (Sign Up Only) */}
               {isSignUp && (
                 <div className="space-y-2 animate-slide-down">
                   <Label htmlFor="confirmPassword" className="text-sm font-medium">
@@ -440,7 +378,7 @@ const Auth = () => {
                     type={showPassword ? "text" : "password"}
                     placeholder="Confirm your password"
                     value={confirmPassword}
-                    onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     onBlur={() => handleBlur("confirmPassword")}
                     className={`h-12 px-4 transition-all duration-200 ${inputStateClasses("confirmPassword")}`}
                   />
@@ -453,11 +391,11 @@ const Auth = () => {
                 </div>
               )}
 
+              {/* Forgot Password (Sign In Only) */}
               {!isSignUp && (
                 <div className="flex justify-end">
                   <button
                     type="button"
-                    onClick={() => navigate("/forgot-password")}
                     className="text-sm text-primary hover:text-primary/80 transition-colors font-medium"
                   >
                     Forgot password?
@@ -465,6 +403,7 @@ const Auth = () => {
                 </div>
               )}
 
+              {/* Submit Button */}
               <Button
                 type="submit"
                 disabled={isLoading}
@@ -480,6 +419,7 @@ const Auth = () => {
                 )}
               </Button>
 
+              {/* Privacy Notice */}
               <p className="text-xs text-center text-muted-foreground leading-relaxed">
                 {isSignUp ? (
                   <>
@@ -497,6 +437,7 @@ const Auth = () => {
               </p>
             </form>
 
+            {/* Divider */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-border" />
@@ -508,6 +449,7 @@ const Auth = () => {
               </div>
             </div>
 
+            {/* Toggle Mode Button */}
             <Button
               type="button"
               variant="outline"
@@ -517,12 +459,12 @@ const Auth = () => {
               {isSignUp ? "Sign in instead" : "Create an account"}
             </Button>
 
+            {/* Mobile Trust Badge */}
             <div className="lg:hidden flex items-center justify-center gap-2 pt-4">
               <Shield className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">
                 Secure, private, and built for serious learners
               </span>
-
             </div>
           </div>
         </div>

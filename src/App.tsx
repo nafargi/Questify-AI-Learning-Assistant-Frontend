@@ -6,15 +6,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppProvider } from "@/contexts/AppContext";
 import { WalkthroughProvider } from "@/components/walkthrough/WalkthroughContext";
-import { MaterialProvider } from "@/contexts/MaterialContext";
 import { WalkthroughManager } from "@/components/walkthrough/WalkthroughManager";
 import { ThemeProvider } from "@/components/theme-provider";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
-import VerifyOTP from "./pages/VerifyOTP";
 import Dashboard from "./pages/Dashboard";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
 import Upload from "./pages/Upload";
 import Exam from "./pages/Exam";
 import Notes from "./pages/Notes";
@@ -36,8 +32,7 @@ const App = () => (
     <ThemeProvider defaultTheme="light" storageKey="questify-theme" attribute="class">
       <AuthProvider>
         <AppProvider>
-          <MaterialProvider>
-            <WalkthroughProvider>
+          <WalkthroughProvider>
             <WalkthroughManager />
             <TooltipProvider>
               <Toaster />
@@ -46,9 +41,6 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Landing />} />
                   <Route path="/auth" element={<Auth />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/verify-otp" element={<VerifyOTP />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/upload" element={<Upload />} />
                   <Route path="/exam" element={<Exam />} />
@@ -67,11 +59,10 @@ const App = () => (
               </BrowserRouter>
             </TooltipProvider>
           </WalkthroughProvider>
-        </MaterialProvider>
-      </AppProvider>
+        </AppProvider>
       </AuthProvider>
     </ThemeProvider>
-  </QueryClientProvider>
+  </QueryClientProvider >
 );
 
 export default App;
