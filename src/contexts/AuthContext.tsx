@@ -1,32 +1,15 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { authService } from "@/services/authService";
-
-export interface User {
-  user_id: string;
-  email: string;
-  full_name?: string;
-  role?: string;
-  [key: string]: any;
-}
-
-export interface Session {
-  access_token: string;
-  [key: string]: any;
-}
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, fullName?: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, fullName?: string) => Promise<void>;
-  logout: () => Promise<void>;
   isAdmin: boolean;
-  refreshProfile: () => Promise<void>;
-  avatarUrl: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,101 +19,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  const fetchAvatar = async () => {
-    try {
-      const blobUrl = await authService.getAvatar();
-      setAvatarUrl(blobUrl);
-    } catch (error) {
-      console.error("Failed to fetch avatar blob:", error);
-    }
-  };
-
-  const refreshProfile = async () => {
-    const token = localStorage.getItem('access_token');
-    if (!token) return;
-
-    try {
-      const [profile] = await Promise.all([
-        authService.getProfile(),
-        fetchAvatar()
-      ]);
-      console.log('User profile and avatar refreshed');
-      setUser(profile);
-    } catch (error) {
-      console.error("Failed to refresh user profile:", error);
-    }
-  };
 
   useEffect(() => {
-    const loadUser = async () => {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        setSession({ access_token: token });
-        try {
-          const [profile] = await Promise.all([
-            authService.getProfile(),
-            fetchAvatar()
-          ]);
-          console.log('User profile and avatar loaded on mount');
-          setUser(profile);
-          setIsAdmin(profile?.role === 'admin');
-        } catch (error) {
-          console.error("Failed to load user profile:", error);
-          localStorage.removeItem('access_token');
-          setSession(null);
-          setUser(null);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+
+        // Defer admin check
+        if (session?.user) {
+          setTimeout(() => {
+            checkAdminStatus(session.user.id);
+          }, 0);
+        } else {
+          setIsAdmin(false);
         }
       }
-      setLoading(false);
-    };
+    );
 
-    loadUser();
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+      
+      if (session?.user) {
+        checkAdminStatus(session.user.id);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    try {
-      const data = await authService.login(email, password);
-      const token = data?.access_token || localStorage.getItem('access_token');
-      
-      if (token) {
-        setSession({ access_token: token });
-        const [profile] = await Promise.all([
-          authService.getProfile(),
-          fetchAvatar()
-        ]);
-        setUser(profile);
-        setIsAdmin(profile?.role === 'admin');
-      } else {
-        throw new Error('No token received from login');
-      }
-    } catch (error: any) {
-      console.error('Login error:', error);
-      throw error;
+  const checkAdminStatus = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'admin')
+      .maybeSingle();
+    
+    if (!error && data) {
+      setIsAdmin(true);
     }
   };
 
-  const register = async (email: string, password: string, fullName?: string) => {
-    try {
-      await authService.register(fullName || '', email, password);
-    } catch (error: any) {
-      console.error('Register error:', error);
-      throw error;
-    }
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error };
   };
 
-  const logout = async () => {
-    authService.logout();
+  const signUp = async (email: string, password: string, fullName?: string) => {
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
+    return { error };
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setSession(null);
     setIsAdmin(false);
   };
-
-  // Aliases to maintain compatibility with existing codebase
-  const signIn = login;
-  const signUp = register;
-  const signOut = logout;
 
   return (
     <AuthContext.Provider value={{
@@ -140,12 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signUp,
       signOut,
-      login,
-      register,
-      logout,
       isAdmin,
-      refreshProfile,
-      avatarUrl,
     }}>
       {children}
     </AuthContext.Provider>

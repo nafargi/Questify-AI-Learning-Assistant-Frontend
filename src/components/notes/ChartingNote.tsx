@@ -1,4 +1,4 @@
-import { NoteContent } from "@/types/notes";
+import { NoteContent } from "@/data/mockNotes";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 

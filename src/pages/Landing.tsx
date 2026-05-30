@@ -166,16 +166,16 @@ export default function Landing() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1, duration: 1 }}
-            className="pt-12 flex flex-wrap items-center justify-center gap-4 md:gap-8 text-[10px] md:text-sm text-muted-foreground/60 font-bold uppercase tracking-wider px-4"
+            className="pt-12 flex items-center justify-center gap-8 text-sm text-muted-foreground/60 font-medium"
           >
             <div className="flex items-center gap-2">
-              <CheckCircle weight="fill" className="text-primary/60" /> Scientific Pedagogy
+              <CheckCircle weight="fill" /> Scientific Pedagogy
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle weight="fill" className="text-primary/60" /> Private & Secure
+              <CheckCircle weight="fill" /> Private & Secure
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle weight="fill" className="text-primary/60" /> University Standard
+              <CheckCircle weight="fill" /> University Standard
             </div>
           </motion.div>
         </div>

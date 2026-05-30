@@ -1,14 +1,29 @@
-import { useCallback } from "react";
-import { Upload as UploadIcon, FileText, X, Check, CircleNotch, CaretRight, Sparkle, Brain, WarningCircle } from "@phosphor-icons/react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState, useCallback } from "react";
+import { Upload as UploadIcon, FileText, X, Check, CircleNotch, CaretRight, Sparkle } from "@phosphor-icons/react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
 import { Layout } from "@/components/layout/Layout";
 import { cn } from "@/lib/utils";
-import { useMaterial } from "@/contexts/MaterialContext";
-import { useNavigate } from "react-router-dom";
+
+interface UploadedFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  status: "uploading" | "processing" | "done" | "error";
+  progress: number;
+}
+
+interface ExtractedUnit {
+  id: string;
+  title: string;
+  description: string;
+  topics: string[];
+  confidence: number;
+}
 
 const formatFileSize = (bytes: number): string => {
   if (bytes < 1024) return bytes + " B";
@@ -31,97 +46,191 @@ const getConfidenceMessage = (confidence: number): string => {
 };
 
 export default function Upload() {
-  const {
-    files,
-    wizardStep,
-    confidence,
-    collectionId,
-    isProcessing,
-    analysisReady,
-    extractedUnits,
-    setWizardStep,
-    setConfidence,
-    processFiles,
-    removeFile,
-    handlePreprocess,
-    handleStartAnalysis,
-    resetProcess,
-  } = useMaterial();
+  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [confidence, setConfidence] = useState([50]);
+  const [step, setStep] = useState<"upload" | "confidence" | "units">("upload");
+  const [extractedUnits, setExtractedUnits] = useState<ExtractedUnit[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const navigate = useNavigate();
-
-  const onDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    setIsDragOver(false);
+
     const droppedFiles = Array.from(e.dataTransfer.files);
     processFiles(droppedFiles);
-  }, [processFiles]);
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       processFiles(Array.from(e.target.files));
-      e.target.value = ""; // reset so user can select more files
     }
   };
 
-  const handleFinish = () => {
-    // Reset the context state so the next visit starts at Step 1
-    resetProcess();
-    // Navigate to the exam room
-    navigate("/exam");
+  const processFiles = (newFiles: File[]) => {
+    const uploadFiles: UploadedFile[] = newFiles.map((file) => ({
+      id: Math.random().toString(36).substr(2, 9),
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      status: "uploading",
+      progress: 0,
+    }));
+
+    setFiles((prev) => [...prev, ...uploadFiles]);
+
+    // Simulate upload progress
+    uploadFiles.forEach((file) => {
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.random() * 30;
+        if (progress >= 100) {
+          progress = 100;
+          clearInterval(interval);
+          setFiles((prev) =>
+            prev.map((f) =>
+              f.id === file.id ? { ...f, status: "processing", progress: 100 } : f
+            )
+          );
+          // Simulate processing
+          setTimeout(() => {
+            setFiles((prev) =>
+              prev.map((f) =>
+                f.id === file.id ? { ...f, status: "done" } : f
+              )
+            );
+          }, 1500);
+        } else {
+          setFiles((prev) =>
+            prev.map((f) =>
+              f.id === file.id ? { ...f, progress } : f
+            )
+          );
+        }
+      }, 200);
+    });
+  };
+
+  const removeFile = (id: string) => {
+    setFiles((prev) => prev.filter((f) => f.id !== id));
+  };
+
+  const handleContinueToConfidence = () => {
+    if (files.length > 0 && files.every((f) => f.status === "done")) {
+      setStep("confidence");
+    }
+  };
+
+  const handleAnalyze = () => {
+    setIsProcessing(true);
+
+    // Simulate AI analysis
+    setTimeout(() => {
+      setExtractedUnits([
+        {
+          id: "u1",
+          title: "Introduction to Programming",
+          description: "Foundational concepts including variables, data types, and basic syntax.",
+          topics: ["Variables", "Data Types", "Operators", "Basic I/O"],
+          confidence: 75,
+        },
+        {
+          id: "u2",
+          title: "Control Structures",
+          description: "Decision making and loops in programming.",
+          topics: ["If-Else", "Switch", "For Loops", "While Loops"],
+          confidence: 60,
+        },
+        {
+          id: "u3",
+          title: "Functions & Methods",
+          description: "Modular programming with reusable code blocks.",
+          topics: ["Function Definition", "Parameters", "Return Values", "Scope"],
+          confidence: 45,
+        },
+        {
+          id: "u4",
+          title: "Data Structures",
+          description: "Organizing and storing data efficiently.",
+          topics: ["Arrays", "Lists", "Dictionaries", "Sets"],
+          confidence: 30,
+        },
+      ]);
+      setIsProcessing(false);
+      setStep("units");
+    }, 2500);
   };
 
   return (
-    <Layout>
+    <Layout >
       <div className="container py-6 max-w-5xl">
         {/* Progress Steps */}
         <div className="flex items-center justify-center gap-4 mb-8">
-          {["Upload", "Analyze", "Review"].map((label, index) => (
-            <div key={label} className="flex items-center">
-              <div className="flex items-center gap-2">
-                <div
-                  className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all",
-                    wizardStep > index + 1
-                      ? "bg-primary text-primary-foreground"
-                      : wizardStep === index + 1
-                        ? "bg-primary/20 text-primary border-2 border-primary"
-                        : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {wizardStep > index + 1 ? <Check className="w-4 h-4" /> : index + 1}
+          {["Upload", "Confidence", "Review"].map((label, index) => {
+            const stepIndex = index;
+            const currentStep = step === "upload" ? 0 : step === "confidence" ? 1 : 2;
+            const isActive = stepIndex === currentStep;
+            const isComplete = stepIndex < currentStep;
+
+            return (
+              <div key={label} className="flex items-center">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all",
+                      isComplete
+                        ? "bg-primary text-primary-foreground"
+                        : isActive
+                          ? "bg-primary/20 text-primary border-2 border-primary"
+                          : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {isComplete ? <Check className="w-4 h-4" /> : index + 1}
+                  </div>
+                  <span className={cn("text-sm font-medium hidden sm:block", isActive ? "text-foreground" : "text-muted-foreground")}>
+                    {label}
+                  </span>
                 </div>
-                <span className={cn("text-sm font-medium hidden sm:block", wizardStep === index + 1 ? "text-foreground" : "text-muted-foreground")}>
-                  {label}
-                </span>
+                {index < 2 && (
+                  <div className="h-[2px] w-8 bg-muted mx-4" />
+                )}
               </div>
-              {index < 2 && (
-                <div className="h-[2px] w-8 bg-muted mx-4" />
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Step 1: Upload */}
-        {wizardStep === 1 && (
+        {step === "upload" && (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center">
               <h1 className="text-3xl font-bold tracking-tight">Upload Materials</h1>
               <p className="text-muted-foreground mt-2">Questy will analyze your documents to build a personalized study plan</p>
             </div>
 
+            {/* Drop Zone */}
             <Card
               className={cn(
-                "border-2 border-dashed transition-all duration-300 rounded-xl border-muted hover:border-primary/50"
+                "border-2 border-dashed transition-all duration-300 rounded-xl",
+                isDragOver ? "border-primary bg-primary/5 scale-[1.01]" : "border-muted hover:border-primary/50"
               )}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={onDrop}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragOver(true);
+              }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={handleDrop}
             >
               <CardContent className="p-8 md:p-12">
                 <div className="flex flex-col items-center text-center">
-                  <div className="w-20 h-20 rounded-3xl bg-muted text-muted-foreground flex items-center justify-center mb-6 transition-colors">
+                  <div className={cn(
+                    "w-20 h-20 rounded-3xl flex items-center justify-center mb-6 transition-colors",
+                    isDragOver ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  )}>
                     <UploadIcon className="w-10 h-10" />
                   </div>
-                  <h3 className="text-xl font-bold mb-2">Drag & drop files to upload</h3>
+                  <h3 className="text-xl font-bold mb-2">
+                    {isDragOver ? "Drop files here" : "Drag & drop files to upload"}
+                  </h3>
                   <p className="text-sm text-muted-foreground mb-8">
                     Support for PDF, DOCX, PPTX, and TXT files
                   </p>
@@ -131,7 +240,7 @@ export default function Upload() {
                       multiple
                       className="hidden"
                       onChange={handleFileSelect}
-                      accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain"
+                      accept=".pdf,.doc,.docx,.ppt,.pptx,.txt"
                     />
                     <Button variant="outline" className="cursor-pointer rounded-full px-8 h-12" asChild>
                       <span>Choose Files</span>
@@ -141,6 +250,7 @@ export default function Upload() {
               </CardContent>
             </Card>
 
+            {/* Uploaded Files */}
             {files.length > 0 && (
               <div className="space-y-3">
                 <h4 className="text-sm font-bold flex items-center gap-2 px-2">
@@ -148,34 +258,27 @@ export default function Upload() {
                   Uploaded Documents
                 </h4>
                 {files.map((file) => (
-                  <Card key={file.id} className={cn(
-                    "rounded-lg border shadow-sm overflow-hidden group transition-all",
-                    file.status === "error" ? "border-destructive/50 bg-destructive/5" : "border-none"
-                  )}>
+                  <Card key={file.id} className="rounded-lg border-none shadow-sm overflow-hidden group">
                     <CardContent className="p-4 flex items-center gap-4">
-                      <div className={cn(
-                        "w-12 h-12 rounded-xl flex items-center justify-center",
-                        file.status === "error" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
-                      )}>
-                        {file.status === "error" ? <WarningCircle size={24} /> : <FileText size={24} />}
+                      <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                        <FileText className="w-6 h-6" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="font-bold text-sm truncate">{file.name}</p>
-                          <p className="text-xs text-muted-foreground shrink-0">{formatFileSize(file.size)}</p>
-                        </div>
+                        <p className="font-bold text-sm truncate">{file.name}</p>
+                        <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
                         {file.status === "uploading" && (
                           <Progress value={file.progress} className="h-1.5 mt-2" />
                         )}
-                        {file.status === "error" && (
-                          <p className="text-[10px] text-destructive font-medium mt-1">
-                            {file.errorMessage}
-                          </p>
-                        )}
                       </div>
                       <div className="flex items-center gap-3">
+                        {file.status === "processing" && (
+                          <Badge variant="secondary" className="gap-2 rounded-full py-1">
+                            <CircleNotch className="w-3 h-3 animate-spin" />
+                            Processing
+                          </Badge>
+                        )}
                         {file.status === "done" && (
-                          <Badge className="bg-green-500/10 text-green-500 border-none rounded-full py-1">
+                          <Badge className="bg-success/10 text-success border-none rounded-full py-1">
                             <Check className="w-3 h-3 mr-1" />
                             Ready
                           </Badge>
@@ -195,41 +298,37 @@ export default function Upload() {
               </div>
             )}
 
-            <div className="flex justify-end items-center bg-card p-4 rounded-xl border mt-8">
+            {/* Action Bar */}
+            <div className="flex justify-between items-center bg-card p-4 rounded-xl border  mt-8 animate-in slide-in-from-bottom-4 duration-500">
+              <div className="hidden md:block">
+                <p className="text-sm font-bold">{files.length} files selected</p>
+                <p className="text-xs text-muted-foreground">All files will be analyzed by Questy AI</p>
+              </div>
               <Button
                 size="lg"
-                className="rounded-full px-12 h-14 font-bold shadow-xl shadow-primary/20"
-                disabled={files.length === 0 || files.some(f => f.status === "uploading") || !files.some(f => f.status === "done") || isProcessing}
-                onClick={handlePreprocess}
+                className="w-full md:w-auto rounded-full px-12 h-12 font-bold shadow-lg shadow-primary/20 transition-transform active:scale-95"
+                disabled={files.length === 0 || !files.every((f) => f.status === "done")}
+                onClick={handleContinueToConfidence}
               >
-                {isProcessing ? (
-                  <div className="flex items-center gap-2">
-                    <CircleNotch className="w-5 h-5 animate-spin" />
-                    <span>Preprocessing...</span>
-                  </div>
-                ) : (
-                  <>
-                    Preprocess
-                    <CaretRight className="ml-2 w-5 h-5" />
-                  </>
-                )}
+                Analyze Content
+                <CaretRight className="ml-2 w-5 h-5" />
               </Button>
             </div>
           </div>
         )}
 
-        {/* Step 2: Preprocess */}
-        {wizardStep === 2 && (
+        {/* Step 2: Confidence */}
+        {step === "confidence" && (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center">
-              <h1 className="text-3xl font-bold tracking-tight">Confidence Baseline</h1>
-              <p className="text-muted-foreground mt-2">How familiar are you with these materials?</p>
+              <h1 className="text-3xl font-bold tracking-tight">Sync Baseline</h1>
+              <p className="text-muted-foreground mt-2">How confident are you with these materials?</p>
             </div>
 
-            <Card className="rounded-xl p-8 md:p-12 border-none shadow-lg bg-card/50 backdrop-blur-sm">
-              <CardContent className="space-y-12">
-                <div className="max-w-md mx-auto space-y-8">
-                  <div className="space-y-4">
+            <Card className="rounded-xl  border-primary/10 overflow-hidden glass-card">
+              <CardContent className="p-8 md:p-12 text-center">
+                <div className="max-w-md mx-auto space-y-12">
+                  <div className="space-y-6">
                     <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-muted-foreground">
                       <span>Beginner</span>
                       <span>Expert</span>
@@ -243,14 +342,14 @@ export default function Upload() {
                     />
                   </div>
 
-                  <div className="relative inline-block w-full text-center">
+                  <div className="relative inline-block">
                     <div className={cn(
                       "text-8xl font-black mb-4 transition-colors",
                       getConfidenceColor(confidence[0])
                     )}>
                       {confidence[0]}%
                     </div>
-                    <p className="text-lg font-bold text-muted-foreground min-h-[3rem] max-w-sm mx-auto">
+                    <p className="text-lg font-bold text-muted-foreground min-h-[3rem]">
                       {getConfidenceMessage(confidence[0])}
                     </p>
                   </div>
@@ -258,26 +357,21 @@ export default function Upload() {
               </CardContent>
             </Card>
 
-            <div className="flex justify-between items-center bg-card p-4 rounded-xl border mt-8">
-              <Button
-                variant="ghost"
-                className="rounded-full px-8 h-12 font-bold"
-                onClick={() => setWizardStep(1)}
-                disabled={isProcessing}
-              >
+            <div className="flex justify-between gap-4 pt-12">
+              <Button variant="ghost" className="rounded-full px-8" onClick={() => setStep("upload")}>
                 Back to Upload
               </Button>
               <Button
                 size="lg"
                 className="rounded-full px-12 h-14 font-bold shadow-xl shadow-primary/20"
-                onClick={handleStartAnalysis}
+                onClick={handleAnalyze}
                 disabled={isProcessing}
               >
                 {isProcessing ? (
-                  <div className="flex items-center gap-2">
-                    <CircleNotch className="w-5 h-5 animate-spin" />
-                    <span>Analyzing...</span>
-                  </div>
+                  <>
+                    <CircleNotch className="mr-2 w-5 h-5 animate-spin" />
+                    Analyzing Content
+                  </>
                 ) : (
                   <>
                     Start Neural Analysis
@@ -289,66 +383,58 @@ export default function Upload() {
           </div>
         )}
 
-
-
-        {/* Step 3: Study */}
-        {wizardStep === 3 && (
+        {/* Step 3: Units */}
+        {step === "units" && (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center">
               <h1 className="text-3xl font-bold tracking-tight">Analysis Results</h1>
               <p className="text-muted-foreground mt-2">We've identified the following study units from your documents</p>
             </div>
 
-            <Card className="rounded-xl p-8 md:p-12 border-none shadow-lg bg-card/50 backdrop-blur-sm">
-              <CardContent className="space-y-4">
-                {extractedUnits.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No chapters were extracted. Please try again.</p>
-                ) : (
-                  <ol className="space-y-4">
-                    {extractedUnits.map((unit) => (
-                      <li key={unit.id} className="flex gap-4 p-4 rounded-xl bg-muted/50 text-left">
-                        <span className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/15 text-primary text-sm font-black flex items-center justify-center">
-                          {unit.id}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-sm leading-snug">{unit.title}</h4>
-                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{unit.description}</p>
-                          {unit.topics && unit.topics.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              {unit.topics.map((topic) => (
-                                <span
-                                  key={topic}
-                                  className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20"
-                                >
-                                  {topic}
-                                </span>
-                              ))}
-                            </div>
-                          )}
+            <div className="grid gap-4">
+              {extractedUnits.map((unit, index) => (
+                <Card key={unit.id} className="rounded-xl border-none shadow-sm hover:shadow-md transition-shadow overflow-hidden group">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                      <div className="flex-1 space-y-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                            {index + 1}
+                          </div>
+                          <h3 className="text-xl font-bold">{unit.title}</h3>
                         </div>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-              </CardContent>
-            </Card>
+                        <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+                          {unit.description}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {unit.topics.map((topic) => (
+                            <Badge key={topic} variant="secondary" className="rounded-full px-3 py-1">
+                              {topic}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="bg-muted/50 p-4 rounded-2xl min-w-[120px] text-center">
+                        <p className={cn("text-2xl font-black", getConfidenceColor(unit.confidence))}>
+                          {unit.confidence}%
+                        </p>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Accuracy</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
 
-            <div className="flex justify-between items-center bg-card p-4 rounded-xl border mt-8">
-              <Button
-                variant="ghost"
-                className="rounded-full px-8 h-12 font-bold"
-                onClick={() => setWizardStep(2)}
-              >
-                Back to Analysis
+            <div className="flex justify-between gap-4 pt-12">
+              <Button variant="ghost" className="rounded-full px-8" onClick={() => setStep("confidence")}>
+                Go Back
               </Button>
-              <Button
-                size="lg"
-                className="rounded-full px-12 h-14 font-bold shadow-xl shadow-primary/20"
-                onClick={handleFinish}
-                disabled={!analysisReady}
-              >
-                Begin Study Protocol
-                <Sparkle className="ml-2 w-5 h-5" weight="fill" />
+              <Button className="rounded-full px-12 h-14 font-bold shadow-xl shadow-primary/20 group" asChild>
+                <a href="/exam">
+                  Begin Study Protocol
+                  <CaretRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </a>
               </Button>
             </div>
           </div>

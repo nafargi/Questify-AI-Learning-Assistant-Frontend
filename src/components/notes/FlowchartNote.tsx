@@ -1,4 +1,4 @@
-import { NoteContent } from "@/types/notes";
+import { NoteContent } from "@/data/mockNotes";
 import { Badge } from "@/components/ui/badge";
 import { ArrowDown } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";

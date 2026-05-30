@@ -1,4 +1,4 @@
-import { NoteContent } from "@/types/notes";
+import { NoteContent } from "@/data/mockNotes";
 import { BookOpen, Pencil } from "@phosphor-icons/react";
 
 export const CornellNote = ({ content }: { content: NoteContent }) => {

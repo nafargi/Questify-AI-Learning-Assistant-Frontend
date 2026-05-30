@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { ChapterStructure } from "@/components/study/ChapterContent";
+import { MOCK_CHAPTERS } from "@/data/mockChapters";
 
 interface GenerateChapterParams {
   courseName: string;
-  chapterTitle?: string;
-  collectionId?: string;
+  chapterTitle: string;
 }
 
 export function useChapter() {
@@ -18,8 +18,15 @@ export function useChapter() {
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     try {
-      // Logic for real API call would go here
-      // For now, we use a dynamic fallback to ensure the app never breaks
+      // Look up content in our robust mock registry
+      const foundContent = MOCK_CHAPTERS[params.chapterTitle];
+      
+      if (foundContent) {
+        setChapterContent(foundContent);
+        return foundContent;
+      }
+
+      // Dynamic fallback for unmocked chapters to ensure the app never breaks
       const fallbackContent: ChapterStructure = {
         introduction: `This comprehensive guide explores ${params.chapterTitle} within the context of ${params.courseName}. It covers the theoretical foundations, practical applications, and emerging trends in the field... [This is a fallback for ${params.chapterTitle} while we expand the curriculum].`,
         learningObjectives: [
