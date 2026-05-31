@@ -1,46 +1,39 @@
 export type StudyMethod = 'pomodoro' | 'feynman' | 'leitner' | 'sq3r' | 'active-recall';
 
-export interface BaseStudySession {
-  id: string;
+export interface BaseStudy {
+  study_id: string;
   collection_id: string;
-  method: StudyMethod;
   created_at: string;
 }
 
-export interface PomodoroPlan extends BaseStudySession {
-  method: 'pomodoro';
-  sessions: { topic: string; duration_minutes: number }[];
+export interface PomodoroSession { task: string; duration_min: number; break_min: number; }
+export interface PomodoroSchedule extends BaseStudy {
+  sessions: PomodoroSession[];
 }
 
-export interface FeynmanExplanation extends BaseStudySession {
-  method: 'feynman';
-  concept: string;
-  explanation: string;
+export interface FeynmanExplanation extends BaseStudy {
+  topic: string;
+  simple_explanation: string;
+  gaps: string[];
   analogies: string[];
 }
 
-export interface LeitnerSystem extends BaseStudySession {
-  method: 'leitner';
-  boxes: Record<string, { front: string; back: string }[]>;
+export interface LeitnerCard { question: string; answer: string; box: number; }
+export interface LeitnerSystem extends BaseStudy {
+  cards: LeitnerCard[];
 }
 
-export interface SQ3RGuide extends BaseStudySession {
-  method: 'sq3r';
+export interface SQ3RGuide extends BaseStudy {
   survey: string[];
-  question: string[];
-  read: string[];
+  questions: string[];
+  read_notes: string;
   recite: string[];
-  review: string[];
+  review: string;
 }
 
-export interface ActiveRecallSession extends BaseStudySession {
-  method: 'active-recall';
-  prompts: string[];
+export interface ActiveRecallItem { question: string; hint: string; }
+export interface ActiveRecallSession extends BaseStudy {
+  items: ActiveRecallItem[];
 }
 
-export type AnyStudySession =
-  | PomodoroPlan
-  | FeynmanExplanation
-  | LeitnerSystem
-  | SQ3RGuide
-  | ActiveRecallSession;
+export type AnyStudy = PomodoroSchedule | FeynmanExplanation | LeitnerSystem | SQ3RGuide | ActiveRecallSession;

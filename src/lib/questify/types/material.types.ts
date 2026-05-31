@@ -1,21 +1,23 @@
 export interface Material {
-  id: string;
+  material_id: string;
   user_id: string;
   file_name: string;
+  file_key: string;
+  file_type: string;
   file_size: number;
-  mime_type: string;
-  upload_date: string;
+  created_at: string;
+}
+
+export interface AnalysisJob {
+  job_id: string;
+  status: 'pending' | 'processing' | 'done' | 'failed';
 }
 
 export interface AnalysisJobStatus {
   job_id: string;
   status: 'pending' | 'processing' | 'done' | 'failed';
+  data?: unknown;
   error?: string;
-  progress?: number;
 }
 
-export interface AnalysisJob {
-  job_id: string;
-  status: string;
-  message: string;
-}
+export type ProgressCallback = (progress: number) => void;

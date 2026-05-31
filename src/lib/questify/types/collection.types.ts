@@ -1,19 +1,16 @@
-import { Material } from './material.types';
-
-export interface Chapter {
-  id: string;
+export interface Collection {
   collection_id: string;
+  user_id: string;
   title: string;
-  summary?: string;
-  page_start?: number;
-  page_end?: number;
+  confidence: number | null;
+  created_at: string;
+  material_ids: string[];
 }
 
-export interface Collection {
-  id: string;
-  user_id: string;
-  name: string;
-  created_at: string;
-  materials?: Material[];
-  chapters?: Chapter[];
+export interface Chapter {
+  chapter_id: string;
+  collection_id: string;
+  title: string;
+  summary: string;
+  order: number;
 }

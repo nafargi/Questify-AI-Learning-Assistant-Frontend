@@ -1,29 +1,25 @@
-import { z } from 'zod';
+export interface ChatSession {
+  session_id: string;
+  user_id: string;
+  created_at: string;
+}
 
 export interface ChatMessage {
-  id: string;
+  message_id: string;
   session_id: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant';
   content: string;
   created_at: string;
 }
 
-export interface ChatSession {
-  id: string;
-  user_id: string;
-  title: string;
-  created_at: string;
-  updated_at: string;
+export interface AskPayload {
+  question: string;
+  session_id?: string;
+  collection_id?: string;
 }
 
-export const AskPayloadSchema = z.object({
-  question: z.string().trim().min(1, 'Question cannot be empty').max(2000, 'Question too long'),
-  session_id: z.string().uuid().optional(),
-});
-
-export type AskPayload = z.infer<typeof AskPayloadSchema>;
-
 export interface AskResponse {
-  message: ChatMessage;
+  answer: string;
   session_id: string;
+  message_id: string;
 }

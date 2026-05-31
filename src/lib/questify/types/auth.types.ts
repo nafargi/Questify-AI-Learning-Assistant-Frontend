@@ -1,58 +1,39 @@
 import { z } from 'zod';
 
 export const RegisterPayloadSchema = z.object({
-  email: z.string().email().trim().toLowerCase(),
+  full_name: z.string().min(2),
+  email: z.string().email(),
   password: z.string().min(8),
-  name: z.string().trim().min(1),
 });
 export type RegisterPayload = z.infer<typeof RegisterPayloadSchema>;
 
-export const VerifyPayloadSchema = z.object({
-  email: z.string().email().trim().toLowerCase(),
-  otp: z.string().length(6).regex(/^\d+$/, 'OTP must contain only digits'),
-});
-export type VerifyPayload = z.infer<typeof VerifyPayloadSchema>;
-
 export const LoginPayloadSchema = z.object({
-  email: z.string().email().trim().toLowerCase(),
+  email: z.string().email(),
   password: z.string().min(1),
 });
 export type LoginPayload = z.infer<typeof LoginPayloadSchema>;
 
-export const ResetPasswordPayloadSchema = z.object({
-  email: z.string().email().trim().toLowerCase(),
-  otp: z.string().length(6).regex(/^\d+$/),
-  new_password: z.string().min(8),
-});
-export type ResetPasswordPayload = z.infer<typeof ResetPasswordPayloadSchema>;
+export interface VerifyPayload { email: string; otp: string; }
+export interface ResetPasswordPayload { email: string; otp: string; new_password: string; }
+export interface ChangePasswordPayload { old_password: string; new_password: string; }
+export interface UpdateProfilePayload { full_name?: string; }
 
-export const ChangePasswordPayloadSchema = z.object({
-  current_password: z.string().min(1),
-  new_password: z.string().min(8),
-});
-export type ChangePasswordPayload = z.infer<typeof ChangePasswordPayloadSchema>;
-
-export const UpdateProfilePayloadSchema = z.object({
-  name: z.string().trim().min(1).optional(),
-});
-export type UpdateProfilePayload = z.infer<typeof UpdateProfilePayloadSchema>;
+export interface AuthUser {
+  access_token: string;
+  token_type: string;
+}
 
 export interface UserProfile {
   user_id: string;
+  full_name: string;
   email: string;
-  name: string;
-  role: 'user' | 'support' | 'super_admin';
-  avatar_url?: string | null;
   is_verified: boolean;
+  avatar_url: string | null;
+  role: string;
   created_at: string;
 }
 
-export interface AuthUser {
-  user: UserProfile;
-  access_token: string;
-}
-
-export interface FullUserProfile extends UserProfile {
-  last_login?: string;
-  // Other extended profile details can be added here
-}
+export type FullUserProfile = UserProfile & {
+  subscription_status: string | null;
+  plan_name: string | null;
+};

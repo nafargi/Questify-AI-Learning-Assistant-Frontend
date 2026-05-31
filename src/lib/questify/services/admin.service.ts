@@ -1,121 +1,120 @@
 import { QuestifyClient } from '../client/questify.client';
-import { ForbiddenError, ValidationError } from '../client/questify.errors';
+import { ValidationError, ForbiddenError, QuestifyErrorCode } from '../client/questify.errors';
+import { tokenManager } from '../client/questify.auth-store';
 import { AuthService } from './auth.service';
 import {
-  AdminUser,
-  AdminUserDetail,
-  AdminSubscription,
-  AdminTransaction,
-  Pagination,
-  CreatePlanPayload,
-  CreatePlanPayloadSchema,
-  AssignSubscriptionPayload,
-  AssignSubscriptionPayloadSchema,
-  UsagePlan,
-  Subscription,
-  UserProfile,
+  UsagePlan, AdminUser, AdminUserDetail, AdminSubscription, AdminTransaction,
+  Subscription, Pagination, CreatePlanPayload, AssignSubscriptionPayload, UserRole
 } from '../types';
 
+type MinRole = 'support' | 'super_admin';
+const ROLE_HIERARCHY: Record<string, number> = { student: 0, support: 1, super_admin: 2 };
+
+let _currentUserRole: string | null = null;
+
+async function requireRole(minimum: MinRole): Promise<void> {
+  if (!_currentUserRole) {
+    try {
+      const profile = await AuthService.getProfile();
+      _currentUserRole = profile.role;
+    } catch {
+      throw new ForbiddenError(QuestifyErrorCode.FORBIDDEN, 'Cannot verify user role', 'local', '/admin');
+    }
+  }
+  const userLevel = ROLE_HIERARCHY[_currentUserRole] ?? 0;
+  const requiredLevel = ROLE_HIERARCHY[minimum] ?? 99;
+  if (userLevel < requiredLevel) {
+    throw new ForbiddenError(QuestifyErrorCode.FORBIDDEN, `This action requires the "${minimum}" role`, 'local', '/admin');
+  }
+}
+
 export class AdminService {
-  /**
-   * Internal guard to ensure current user has the minimum required role.
-   * Note: In a real app, role is often embedded in the JWT payload to avoid an extra
-   * API call. For strictness, if we only have the profile endpoint, we fetch it and cache.
-   */
-  private static async requireRole(minimum: 'support' | 'super_admin'): Promise<UserProfile> {
-    const profile = await AuthService.getProfile(); // cached for 30s
-    
-    if (minimum === 'super_admin' && profile.role !== 'super_admin') {
-      throw new ForbiddenError(
-        'FORBIDDEN' as any,
-        'Requires super_admin privileges',
-        'local',
-        'AdminAction'
-      );
-    }
-    
-    if (minimum === 'support' && profile.role !== 'support' && profile.role !== 'super_admin') {
-      throw new ForbiddenError(
-        'FORBIDDEN' as any,
-        'Requires at least support privileges',
-        'local',
-        'AdminAction'
-      );
-    }
+  /** Call after login to cache the current user's role. */
+  static setCurrentUserRole(role: string): void { _currentUserRole = role; }
+  static clearCurrentUserRole(): void { _currentUserRole = null; }
 
-    return profile;
-  }
-
-  private static buildPaginationParams(pagination?: Pagination): string {
-    if (!pagination) return '';
-    const params = new URLSearchParams();
-    if (pagination.skip !== undefined) params.append('skip', pagination.skip.toString());
-    if (pagination.limit !== undefined) {
-      const limit = Math.min(pagination.limit, 200);
-      params.append('limit', limit.toString());
-    }
-    const queryString = params.toString();
-    return queryString ? `?${queryString}` : '';
-  }
+  // ─── Plans ─────────────────────────────────────────────────────────────────
 
   static async getAllPlans(): Promise<UsagePlan[]> {
-    await this.requireRole('support');
+    await requireRole('support');
     return QuestifyClient.get<UsagePlan[]>('/admin/plans');
   }
 
   static async createPlan(payload: CreatePlanPayload): Promise<UsagePlan> {
-    await this.requireRole('super_admin');
-    const validated = CreatePlanPayloadSchema.parse(payload);
-    return QuestifyClient.post<UsagePlan>('/admin/plans', validated);
+    await requireRole('super_admin');
+    return QuestifyClient.post<UsagePlan>('/admin/plans', payload);
   }
 
   static async updatePlan(id: string, payload: Partial<CreatePlanPayload>): Promise<UsagePlan> {
-    await this.requireRole('super_admin');
-    // Note: In strict apps we might partial parse here, assuming full patch is supported
+    await requireRole('super_admin');
     return QuestifyClient.patch<UsagePlan>(`/admin/plans/${id}`, payload);
   }
 
   static async deletePlan(id: string): Promise<void> {
-    await this.requireRole('super_admin');
+    await requireRole('super_admin');
     await QuestifyClient.delete(`/admin/plans/${id}`);
   }
 
+  // ─── Subscriptions ─────────────────────────────────────────────────────────
+
   static async assignSubscription(payload: AssignSubscriptionPayload): Promise<Subscription> {
-    await this.requireRole('support');
-    const validated = AssignSubscriptionPayloadSchema.parse(payload);
-    return QuestifyClient.post<Subscription>('/admin/subscriptions/assign', validated);
-  }
-
-  static async listUsers(pagination?: Pagination): Promise<AdminUser[]> {
-    await this.requireRole('support');
-    const qs = this.buildPaginationParams(pagination);
-    return QuestifyClient.get<AdminUser[]>(`/admin/users${qs}`);
-  }
-
-  static async getUser(id: string): Promise<AdminUserDetail> {
-    await this.requireRole('support');
-    return QuestifyClient.get<AdminUserDetail>(`/admin/users/${id}`);
+    await requireRole('support');
+    return QuestifyClient.post<Subscription>('/admin/subscriptions/assign', payload);
   }
 
   static async listAllSubscriptions(pagination?: Pagination): Promise<AdminSubscription[]> {
-    await this.requireRole('support');
-    const qs = this.buildPaginationParams(pagination);
-    return QuestifyClient.get<AdminSubscription[]>(`/admin/subscriptions${qs}`);
+    await requireRole('support');
+    const params = new URLSearchParams();
+    if (pagination?.skip !== undefined) params.set('skip', String(pagination.skip));
+    if (pagination?.limit !== undefined) params.set('limit', String(Math.min(pagination.limit, 200)));
+    const query = params.toString() ? `?${params}` : '';
+    return QuestifyClient.get<AdminSubscription[]>(`/admin/subscriptions${query}`);
   }
+
+  // ─── Users ─────────────────────────────────────────────────────────────────
+
+  static async listUsers(pagination?: Pagination): Promise<AdminUser[]> {
+    await requireRole('support');
+    const params = new URLSearchParams();
+    if (pagination?.skip !== undefined) params.set('skip', String(pagination.skip));
+    if (pagination?.limit !== undefined) params.set('limit', String(Math.min(pagination.limit, 200)));
+    const query = params.toString() ? `?${params}` : '';
+    return QuestifyClient.get<AdminUser[]>(`/admin/users${query}`);
+  }
+
+  static async getUser(id: string): Promise<AdminUserDetail> {
+    await requireRole('support');
+    return QuestifyClient.get<AdminUserDetail>(`/admin/users/${id}`);
+  }
+
+  // ─── Transactions ───────────────────────────────────────────────────────────
 
   static async listAllTransactions(pagination?: Pagination): Promise<AdminTransaction[]> {
-    await this.requireRole('support');
-    const qs = this.buildPaginationParams(pagination);
-    return QuestifyClient.get<AdminTransaction[]>(`/admin/transactions${qs}`);
+    await requireRole('support');
+    const params = new URLSearchParams();
+    if (pagination?.skip !== undefined) params.set('skip', String(pagination.skip));
+    if (pagination?.limit !== undefined) params.set('limit', String(Math.min(pagination.limit, 200)));
+    const query = params.toString() ? `?${params}` : '';
+    return QuestifyClient.get<AdminTransaction[]>(`/admin/transactions${query}`);
   }
 
-  static async promoteUser(userId: string, role: 'support' | 'super_admin'): Promise<UserProfile> {
-    const currentUser = await this.requireRole('super_admin');
-    
-    if (currentUser.user_id === userId) {
-      throw new ValidationError('Cannot promote your own account', 'local', '/admin/promote');
-    }
+  // ─── Promote ────────────────────────────────────────────────────────────────
 
-    return QuestifyClient.post<UserProfile>('/admin/promote', { user_id: userId, role });
+  /**
+   * Promote a user's role.
+   * @throws {ValidationError} if attempting to promote own account
+   */
+  static async promoteUser(userId: string, role: UserRole): Promise<AdminUser> {
+    await requireRole('super_admin');
+    // Check we're not self-promoting
+    try {
+      const profile = await AuthService.getProfile();
+      if (profile.user_id === userId) {
+        throw new ValidationError('Cannot promote your own account', 'local', '/admin/promote');
+      }
+    } catch (e) {
+      if (e instanceof ValidationError) throw e;
+    }
+    return QuestifyClient.post<AdminUser>('/admin/promote', { user_id: userId, role });
   }
 }

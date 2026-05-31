@@ -1,62 +1,43 @@
 import { QuestifyClient } from '../client/questify.client';
 import { SubscriptionContext } from '../context/subscription.context';
-import { SubscriptionLimitError, ValidationError } from '../client/questify.errors';
-import { NoteMethod } from '../types';
+import { SubscriptionLimitError } from '../client/questify.errors';
+import { QuestifyErrorCode } from '../client/questify.errors';
+import { NoteMethod, AnyNote } from '../types';
 
 export class NotesService {
   /**
-   * Internal guard to check if a specific note method is enabled on the current plan.
+   * Generate notes for a collection using the specified method.
+   * @throws {SubscriptionLimitError} if the plan doesn't include this note method
    */
-  private static requireMethodEnabled(method: NoteMethod, endpoint: string): void {
-    const enabledMethods = SubscriptionContext.getEnabledNoteMethods();
-    if (!enabledMethods.includes(method)) {
-      throw new SubscriptionLimitError(
-        'SUBSCRIPTION_REQUIRED' as any, 
-        `Note method '${method}' is not enabled on your current plan.`, 
-        'local', 
-        endpoint
-      );
-    }
+  static async generate<T extends AnyNote>(method: NoteMethod, collectionId: string): Promise<T> {
+    this.guardNoteMethod(method);
+    return QuestifyClient.post<T>(`/notes/${method}/generate`, { collection_id: collectionId });
   }
 
-  /**
-   * Generates a new note for a specific collection.
-   */
-  static async generate<T>(method: NoteMethod, collectionId: string): Promise<T> {
-    const endpoint = `/notes/${method}/generate`;
-    this.requireMethodEnabled(method, endpoint);
-
-    if (!collectionId) {
-      throw new ValidationError('Collection ID is required', 'local', endpoint);
-    }
-
-    return QuestifyClient.post<T>(endpoint, { collection_id: collectionId });
-  }
-
-  /**
-   * Gets all notes of a specific method for a given collection.
-   */
-  static async getByCollection<T>(method: NoteMethod, collectionId: string): Promise<T[]> {
-    if (!collectionId) {
-      throw new ValidationError('Collection ID is required', 'local', `/notes/${method}/collection/${collectionId}`);
-    }
+  /** Get all notes of a method type for a specific collection. */
+  static async getByCollection<T extends AnyNote>(method: NoteMethod, collectionId: string): Promise<T[]> {
     return QuestifyClient.get<T[]>(`/notes/${method}/collection/${collectionId}`);
   }
 
-  /**
-   * Gets all notes of a specific method.
-   */
-  static async getAll<T>(method: NoteMethod): Promise<T[]> {
-    return QuestifyClient.get<T[]>(`/notes/${method}/`);
+  /** Get all notes of a method type across all collections. */
+  static async getAll<T extends AnyNote>(method: NoteMethod): Promise<T[]> {
+    return QuestifyClient.get<T[]>(`/notes/${method}`);
   }
 
-  /**
-   * Deletes a specific note.
-   */
+  /** Delete a specific note. */
   static async delete(method: NoteMethod, noteId: string): Promise<void> {
-    if (!noteId) {
-      throw new ValidationError('Note ID is required', 'local', `/notes/${method}/${noteId}`);
-    }
     await QuestifyClient.delete(`/notes/${method}/${noteId}`);
+  }
+
+  private static guardNoteMethod(method: NoteMethod): void {
+    const enabled = SubscriptionContext.getEnabledNoteMethods();
+    if (enabled.length > 0 && !enabled.includes(method)) {
+      throw new SubscriptionLimitError(
+        QuestifyErrorCode.SUBSCRIPTION_REQUIRED,
+        `Note method "${method}" is not available on your current plan`,
+        'local',
+        `/notes/${method}/generate`
+      );
+    }
   }
 }

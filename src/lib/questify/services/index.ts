@@ -1,9 +1,9 @@
-export * from './auth.service';
-export * from './materials.service';
-export * from './collections.service';
-export * from './exams.service';
-export * from './notes.service';
-export * from './study.service';
-export * from './chat.service';
-export * from './subscriptions.service';
-export * from './admin.service';
+export { AuthService } from './auth.service';
+export { MaterialsService } from './materials.service';
+export { CollectionsService } from './collections.service';
+export { ExamsService } from './exams.service';
+export { NotesService } from './notes.service';
+export { StudyService } from './study.service';
+export { ChatService } from './chat.service';
+export { SubscriptionsService } from './subscriptions.service';
+export { AdminService } from './admin.service';

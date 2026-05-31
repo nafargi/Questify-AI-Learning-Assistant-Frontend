@@ -1,45 +1,32 @@
 import { QuestifyClient } from '../client/questify.client';
 import { SubscriptionContext } from '../context/subscription.context';
-import { SubscriptionLimitError, ValidationError } from '../client/questify.errors';
-import { StudyMethod } from '../types';
+import { SubscriptionLimitError, QuestifyErrorCode } from '../client/questify.errors';
+import { StudyMethod, AnyStudy } from '../types';
 
 export class StudyService {
   /**
-   * Internal guard to check if a specific study method is enabled on the current plan.
+   * Generate a study plan for a collection using the specified method.
+   * @throws {SubscriptionLimitError} if the plan doesn't include this study method
    */
-  private static requireMethodEnabled(method: StudyMethod, endpoint: string): void {
-    const enabledMethods = SubscriptionContext.getEnabledStudyMethods();
-    if (!enabledMethods.includes(method)) {
+  static async generate<T extends AnyStudy>(method: StudyMethod, collectionId: string): Promise<T> {
+    this.guardStudyMethod(method);
+    return QuestifyClient.post<T>(`/study/${method}/generate`, { collection_id: collectionId });
+  }
+
+  /** Get all study plans of a method type for a specific collection. */
+  static async getByCollection<T extends AnyStudy>(method: StudyMethod, collectionId: string): Promise<T[]> {
+    return QuestifyClient.get<T[]>(`/study/${method}/collection/${collectionId}`);
+  }
+
+  private static guardStudyMethod(method: StudyMethod): void {
+    const enabled = SubscriptionContext.getEnabledStudyMethods();
+    if (enabled.length > 0 && !enabled.includes(method)) {
       throw new SubscriptionLimitError(
-        'SUBSCRIPTION_REQUIRED' as any,
-        `Study method '${method}' is not enabled on your current plan.`,
+        QuestifyErrorCode.SUBSCRIPTION_REQUIRED,
+        `Study method "${method}" is not available on your current plan`,
         'local',
-        endpoint
+        `/study/${method}/generate`
       );
     }
-  }
-
-  /**
-   * Generates a new study session for a specific collection.
-   */
-  static async generate<T>(method: StudyMethod, collectionId: string): Promise<T> {
-    const endpoint = `/study/${method}/generate`;
-    this.requireMethodEnabled(method, endpoint);
-
-    if (!collectionId) {
-      throw new ValidationError('Collection ID is required', 'local', endpoint);
-    }
-
-    return QuestifyClient.post<T>(endpoint, { collection_id: collectionId });
-  }
-
-  /**
-   * Gets all study sessions of a specific method for a given collection.
-   */
-  static async getByCollection<T>(method: StudyMethod, collectionId: string): Promise<T[]> {
-    if (!collectionId) {
-      throw new ValidationError('Collection ID is required', 'local', `/study/${method}/collection/${collectionId}`);
-    }
-    return QuestifyClient.get<T[]>(`/study/${method}/collection/${collectionId}`);
   }
 }
