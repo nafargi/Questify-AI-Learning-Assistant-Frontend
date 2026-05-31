@@ -22,7 +22,7 @@ export function getAvatarUrl(path: string | null | undefined): string {
   if (path.startsWith("https") || path.startsWith("blob:") || path.startsWith("data:")) {
     fullUrl = path;
   } else {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://questiai-43b71abdd48b.herokuapp.com';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
     const cleanBase = baseUrl.replace(/\/$/, "");
     const cleanPath = path.replace(/^\//, "");
     fullUrl = `${cleanBase}/${cleanPath}`;
