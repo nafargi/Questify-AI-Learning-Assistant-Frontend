@@ -23,13 +23,13 @@ import Notifications from "./pages/Notifications";
 import Billing from "./pages/Billing";
 import ExamHistory from "./pages/ExamHistory";
 import QuestyChat from "./pages/QuestyChat";
-import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import ExamRoomPage from "./pages/ExamRoomPage";
 import ExamResultPage from "./pages/ExamResultPage";
 import VerifyOTP from "./pages/VerifyOTP";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import { AdminRoutes } from "./admin";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +46,7 @@ const App = () => (
                 <Sonner />
                 <BrowserRouter>
                   <Routes>
+                    {/* ── Public / User Routes ───────────────────────── */}
                     <Route path="/" element={<Landing />} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/verify-otp" element={<VerifyOTP />} />
@@ -65,7 +66,11 @@ const App = () => (
                     <Route path="/billing" element={<Billing />} />
                     <Route path="/exam-history" element={<ExamHistory />} />
                     <Route path="/questy-chat" element={<QuestyChat />} />
-                    <Route path="/admin" element={<AdminDashboard />} />
+
+                    {/* ── Admin Module (self-contained, own auth) ────── */}
+                    <Route path="/admin/*" element={<AdminRoutes />} />
+
+                    {/* ── 404 ────────────────────────────────────────── */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </BrowserRouter>
@@ -75,7 +80,8 @@ const App = () => (
         </GlobalStateProvider>
       </AuthProvider>
     </ThemeProvider>
-  </QueryClientProvider >
+  </QueryClientProvider>
 );
 
 export default App;
+
