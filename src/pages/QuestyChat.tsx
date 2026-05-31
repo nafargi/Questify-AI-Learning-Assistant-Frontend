@@ -26,7 +26,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { chatService, ChatSession, ChatMessage } from '@/services/chatService';
+import { ChatService } from '@/lib/questify/services/chat.service';
+import { ChatSession, ChatMessage } from '@/lib/questify/types/chat.types';
 import { toast } from 'sonner';
 
 // ─── Suggested prompts shown on the empty-state welcome screen ────────────────
@@ -76,13 +77,21 @@ const QuestyChat = () => {
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  
+  const [inputValue, setInputValue] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // ── Data fetchers ──────────────────────────────────────────────────────────
 
   const fetchSessions = async () => {
     setIsLoadingSessions(true);
     try {
-      const data = await chatService.getSessions();
+      const data = await ChatService.listSessions();
       setSessions(data);
     } catch (error) {
       console.error('[Chat] Failed to load sessions:', error);
@@ -95,7 +104,7 @@ const QuestyChat = () => {
   const fetchMessages = async (sessionId: string) => {
     setIsLoadingMessages(true);
     try {
-      const data = await chatService.getMessages(sessionId);
+      const data = await ChatService.getMessages(sessionId);
       setMessages(data);
     } catch (error) {
       console.error('[Chat] Failed to load messages:', error);
@@ -159,14 +168,13 @@ const QuestyChat = () => {
       let sessionId = activeSessionId;
 
       if (!sessionId) {
-        const sessionTitle = question.length > 30 ? question.substring(0, 27) + '...' : question;
-        const newSession = await chatService.createSession(sessionTitle);
+        const newSession = await ChatService.createSession();
         sessionId = newSession.session_id;
         setActiveSessionId(sessionId);
         await fetchSessions(); // Refresh list to show the new session
       }
 
-      const response = await chatService.ask({
+      const response = await ChatService.ask({
         question,
         session_id: sessionId,
       });

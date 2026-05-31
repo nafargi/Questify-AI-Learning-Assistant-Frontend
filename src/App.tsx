@@ -26,6 +26,8 @@ import Notifications from "./pages/Notifications";
 import Billing from "./pages/Billing";
 import ExamHistory from "./pages/ExamHistory";
 import QuestyChat from "./pages/QuestyChat";
+import Pricing from "./pages/Pricing";
+import PaymentResult from "./pages/PaymentResult";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -59,6 +61,8 @@ const App = () => (
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/notifications" element={<Notifications />} />
                   <Route path="/billing" element={<Billing />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/payment/result" element={<PaymentResult />} />
                   <Route path="/exam-history" element={<ExamHistory />} />
                   <Route path="/questy-chat" element={<QuestyChat />} />
                   <Route path="/admin" element={<AdminDashboard />} />
