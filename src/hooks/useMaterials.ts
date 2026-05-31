@@ -49,7 +49,7 @@ export function useMaterials() {
     
     try {
       const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+      const filePath = `${user.user_id}/${Date.now()}.${fileExt}`;
 
       // Upload to storage
       const { error: uploadError } = await supabase.storage
@@ -62,7 +62,7 @@ export function useMaterials() {
       const { data, error: insertError } = await supabase
         .from('materials')
         .insert({
-          user_id: user.id,
+          user_id: user.user_id,
           name: file.name,
           file_path: filePath,
           file_type: file.type,

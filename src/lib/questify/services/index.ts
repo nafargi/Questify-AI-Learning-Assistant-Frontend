@@ -1,9 +1,0 @@
-export { AuthService } from './auth.service';
-export { MaterialsService } from './materials.service';
-export { CollectionsService } from './collections.service';
-export { ExamsService } from './exams.service';
-export { NotesService } from './notes.service';
-export { StudyService } from './study.service';
-export { ChatService } from './chat.service';
-export { SubscriptionsService } from './subscriptions.service';
-export { AdminService } from './admin.service';

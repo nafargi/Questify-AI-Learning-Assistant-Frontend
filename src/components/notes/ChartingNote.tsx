@@ -1,4 +1,4 @@
-import { NoteContent } from "@/types/notes";
+import { NoteContent } from "@/data/mockNotes";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 
@@ -10,7 +10,7 @@ export const ChartingNote = ({ content }: { content: NoteContent }) => {
         <Table>
           <TableHeader className="bg-primary/5">
             <TableRow>
-              {content.columns?.map((header, i) => (
+              {content.headers?.map((header, i) => (
                 <TableHead key={i} className="font-black text-primary uppercase tracking-wider py-4">
                   {header}
                 </TableHead>

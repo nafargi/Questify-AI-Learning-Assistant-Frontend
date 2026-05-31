@@ -3,7 +3,7 @@ import {
   Layout, Users, FileText, ClipboardText, BookOpen,
   Brain, ChatCircle, ChartBar, Bell, Calendar, Shield,
   Pulse, Gear, SignOut, CaretRight,
-  TrendUp, TrendDown, Minus
+  CreditCard, Receipt, Tag
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import AdminOverview from "@/components/admin/AdminOverview";
@@ -19,10 +19,18 @@ import AdminPlanner from "@/components/admin/AdminPlanner";
 import AdminSecurity from "@/components/admin/AdminSecurity";
 import AdminHealth from "@/components/admin/AdminHealth";
 import AdminFeedback from "@/components/admin/AdminFeedback";
+import AdminSubscriptions from "@/components/admin/AdminSubscriptions";
+import AdminTransactions from "@/components/admin/AdminTransactions";
+import AdminPlans from "@/components/admin/AdminPlans";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const menuItems = [
   { id: "overview", label: "Overview", icon: Layout },
   { id: "users", label: "User Management", icon: Users },
+  { id: "subscriptions", label: "Subscriptions", icon: CreditCard },
+  { id: "transactions", label: "Transactions", icon: Receipt },
+  { id: "plans", label: "Plans", icon: Tag },
   { id: "content", label: "Content Oversight", icon: FileText },
   { id: "exams", label: "Exam System", icon: ClipboardText },
   { id: "techniques", label: "Teaching Techniques", icon: BookOpen },
@@ -39,11 +47,21 @@ const menuItems = [
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState("overview");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = () => {
+    signOut();
+    navigate("/auth");
+  };
 
   const renderSection = () => {
     switch (activeSection) {
       case "overview": return <AdminOverview />;
       case "users": return <AdminUsers />;
+      case "subscriptions": return <AdminSubscriptions />;
+      case "transactions": return <AdminTransactions />;
+      case "plans": return <AdminPlans />;
       case "content": return <AdminContent />;
       case "exams": return <AdminExams />;
       case "techniques": return <AdminTechniques />;
@@ -70,17 +88,17 @@ const AdminDashboard = () => {
       >
         {/* Logo */}
         <div className="p-6 border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
+          <button className="flex items-center gap-3 w-full" onClick={() => setSidebarCollapsed((c) => !c)}>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0">
               <span className="text-white font-bold text-lg">Q</span>
             </div>
             {!sidebarCollapsed && (
-              <div>
+              <div className="text-left">
                 <h1 className="text-white font-semibold">Questify</h1>
-                <p className="text-xs text-slate-400">Super Admin</p>
+                <p className="text-xs text-slate-400">Admin Panel</p>
               </div>
             )}
-          </div>
+          </button>
         </div>
 
         {/* Navigation */}
@@ -100,9 +118,7 @@ const AdminDashboard = () => {
               {!sidebarCollapsed && (
                 <>
                   <span className="flex-1 text-left">{item.label}</span>
-                  {activeSection === item.id && (
-                    <CaretRight className="w-4 h-4" />
-                  )}
+                  {activeSection === item.id && <CaretRight className="w-4 h-4" />}
                 </>
               )}
             </button>
@@ -115,7 +131,10 @@ const AdminDashboard = () => {
             <Gear className="w-5 h-5" />
             {!sidebarCollapsed && <span>Settings</span>}
           </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-all">
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-all"
+          >
             <SignOut className="w-5 h-5" />
             {!sidebarCollapsed && <span>Logout</span>}
           </button>

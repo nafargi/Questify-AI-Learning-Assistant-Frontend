@@ -1,4 +1,4 @@
-import { NoteContent } from "@/types/notes";
+import { NoteContent } from "@/data/mockNotes";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils"; // Assuming this utility exists
 

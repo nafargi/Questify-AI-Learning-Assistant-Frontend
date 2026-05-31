@@ -59,7 +59,7 @@ export function useCourses() {
     const { data, error } = await supabase
       .from('courses')
       .insert({
-        user_id: user.id,
+        user_id: user.user_id,
         name: course.name,
         description: course.description,
         icon: course.icon || '📚',
@@ -104,7 +104,7 @@ export function useCourses() {
     const { data, error } = await supabase
       .from('units')
       .insert({
-        user_id: user.id,
+        user_id: user.user_id,
         course_id: unit.courseId,
         title: unit.title,
         description: unit.description,

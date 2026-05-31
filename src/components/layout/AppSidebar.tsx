@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import {
   SquaresFour,
@@ -60,8 +61,10 @@ function SidebarContent({
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+  const { signOut } = useAuth();
 
   const handleSignOut = () => {
+    signOut();
     toast.success("Signed out successfully");
     navigate("/");
     onNavigate?.();
@@ -112,15 +115,15 @@ function SidebarContent({
   };
 
   return (
-    <div className="flex flex-col h-full bg-card border-r border-border/50">
+    <div className="flex flex-col h-full bg-card border-r shadow-sm">
       {/* Logo Header */}
       <div className={cn(
         "h-14 flex items-center px-6 border-b",
         collapsed ? "justify-center" : "justify-between"
       )}>
         <Link to="/" className="flex items-center gap-3" onClick={onNavigate}>
-          <div className="w-8 h-8 rounded-lg bg-background border border-primary/20 flex items-center justify-center flex-shrink-0 p-1">
-            <img src="/main_logo.png" alt="Questify Logo" className="w-full h-full object-contain" />
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20">
+            <GraduationCap className="h-5 w-5 text-primary-foreground" weight="fill" />
           </div>
           {!collapsed && (
             <span className="font-bold text-xl tracking-tight text-foreground">Questify</span>
@@ -241,7 +244,7 @@ export function AppSidebar() {
         <Button
           variant="ghost"
           size="icon"
-          className="fixed top-4 left-4 z-50 h-10 w-10 bg-card border text-foreground hover:bg-accent lg:hidden"
+          className="fixed top-4 left-4 z-50 h-10 w-10 bg-card shadow-lg border text-foreground hover:bg-accent lg:hidden"
           onClick={() => setMobileOpen(true)}
         >
           <List className="w-5 h-5" />
@@ -264,7 +267,7 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 h-screen z-40 transition-all duration-300 hidden lg:block",
+        "fixed left-0 top-0 h-screen z-40 transition-all duration-300 hidden lg:block shadow-sm",
         preferences.sidebarCollapsed ? "w-[72px]" : "w-64"
       )}
     >

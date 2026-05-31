@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 
-export function SpacedRepetition({ onBack, collectionId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; collectionId?: string }) {
+export function SpacedRepetition({ onBack }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string }) {
     // In a real app, we'd sort by 'nextReview' date. 
     // For now, we just take the first 5 cards as a "Due Today" simulation.
     const [queue, setQueue] = useState<Flashcard[]>(MOCK_FLASHCARDS);

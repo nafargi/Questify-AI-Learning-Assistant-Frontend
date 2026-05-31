@@ -1,198 +1,180 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { StudySessionLayout } from "@/components/study/StudySessionLayout";
-import { Stack, ArrowCounterClockwise, Check, X, BookOpen, ArrowLeft, CircleNotch } from "@phosphor-icons/react";
+import { Stack, ArrowCounterClockwise, Check, X, ArrowRight } from "@phosphor-icons/react";
+import { MOCK_FLASHCARDS, Flashcard } from "@/data/mockFlashcards";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
-import { api } from "@/services/api";
-import { toast } from "sonner";
 
-interface LeitnerCard { question: string; answer: string; box: number; idx: string; }
+interface ApiCard { question: string; answer: string; }
 
-export function LeitnerSystem({
-    onBack,
-    collectionId,
-    studyData,
-    bookTitle,
-}: {
-    onBack: () => void;
-    collectionId: string;
-    studyData: any;
-    bookTitle?: string;
-}) {
-    const [cards, setCards] = useState<LeitnerCard[]>([]);
-    const [currentBox, setCurrentBox] = useState<number>(0);
+export function LeitnerSystem({ onBack, studyData }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; collectionId?: string; studyData?: any }) {
+    // Build cards from API data if available, else fall back to mock
+    const initialCards: Flashcard[] = studyData?.boxes
+        ? studyData.boxes.flatMap((b: any) =>
+            (b.cards ?? []).map((c: ApiCard, i: number) => ({
+                id: `${b.box_number}-${i}`,
+                question: c.question,
+                answer: c.answer,
+                topic: studyData.title ?? "Study",
+                box: b.box_number as 1 | 2 | 3 | 4 | 5,
+            }))
+          )
+        : MOCK_FLASHCARDS;
+
+    const [cards, setCards] = useState<Flashcard[]>(initialCards);
+    const [currentBox, setCurrentBox] = useState<number>(1);
     const [activeCardIndex, setActiveCardIndex] = useState(0);
     const [isFlipped, setIsFlipped] = useState(false);
-    const [availableBoxes, setAvailableBoxes] = useState<number[]>([]);
 
-    useEffect(() => {
-        if (studyData?.boxes && Array.isArray(studyData.boxes)) {
-            const flat: LeitnerCard[] = [];
-            studyData.boxes.forEach((box: any) => {
-                const boxNum = box.box_number ?? 0;
-                if (Array.isArray(box.cards)) {
-                    box.cards.forEach((card: any, cardIdx: number) => {
-                        flat.push({
-                            question: card.question,
-                            answer: card.answer,
-                            box: boxNum,
-                            idx: `${boxNum}-${cardIdx}`,
-                        });
-                    });
-                }
-            });
-            setCards(flat);
-            const boxes = Array.from(new Set(flat.map(c => c.box))).sort((a, b) => a - b);
-            setAvailableBoxes(boxes);
-            if (boxes.length > 0 && currentBox === 0 && !boxes.includes(0)) {
-                setCurrentBox(boxes[0]);
-            }
-        }
-    }, [studyData]);
-
+    // Filter cards by current box for the active session
     const boxCards = cards.filter(c => c.box === currentBox);
     const activeCard = boxCards[activeCardIndex];
     const isSessionComplete = activeCardIndex >= boxCards.length;
 
-    const handleRate = async (correct: boolean) => {
+    const handleRate = (correct: boolean) => {
         if (!activeCard) return;
-        const allBoxes = availableBoxes.length > 0 ? availableBoxes : [0, 1, 2, 3, 4];
-        const currentIdx = allBoxes.indexOf(activeCard.box);
-        let newBox: number;
-        if (correct) {
-            newBox = currentIdx < allBoxes.length - 1 ? allBoxes[currentIdx + 1] : allBoxes[allBoxes.length - 1];
-        } else {
-            newBox = allBoxes[0];
-        }
+
+        // Logic: Correct -> Box + 1, Incorrect -> Box 1
+        const newBox = correct ? Math.min(activeCard.box + 1, 5) : 1;
+
         setCards(prev => prev.map(c =>
-            c.idx === activeCard.idx ? { ...c, box: newBox } : c
+            c.id === activeCard.id ? { ...c, box: newBox as 1 | 2 | 3 | 4 | 5 } : c
         ));
 
-        if (collectionId) {
-            try {
-                await api.updateLeitnerProgress({
-                    collection_id: collectionId,
-                    card_id: activeCard.idx,
-                    success: correct,
-                });
-            } catch { /* ignore */ }
-        }
-
         setIsFlipped(false);
-        setTimeout(() => setActiveCardIndex(p => p + 1), 150);
+        setTimeout(() => {
+            setActiveCardIndex(prev => prev + 1);
+        }, 150);
     };
 
-    const getBoxCount = (b: number) => cards.filter(c => c.box === b).length;
-    const progressValue = boxCards.length === 0 ? 0 : (activeCardIndex / boxCards.length) * 100;
-    const displayBoxes = availableBoxes.length > 0 ? availableBoxes : [0, 1, 2, 3, 4];
+    const getBoxCount = (boxNum: number) => cards.filter(c => c.box === boxNum).length;
 
     return (
         <StudySessionLayout
-            title="Leitner Spaced Repetition"
-            subtitle={bookTitle}
+            title="Leitner System"
+            subtitle="Spaced Repetition Boxes"
             icon={Stack}
             color="text-amber-500"
             onExit={onBack}
         >
-            <div className="flex h-full overflow-hidden bg-background">
-                {/* RIGHT: Leitner Content */}
-                <div className="flex-1 flex flex-col p-6 gap-6 overflow-hidden">
-                    {/* Box Selector */}
-                    <div className="grid gap-3 shrink-0" style={{ gridTemplateColumns: `repeat(${displayBoxes.length}, 1fr)` }}>
-                        {displayBoxes.map((box, i) => (
-                            <button
-                                key={box}
-                                onClick={() => { setCurrentBox(box); setActiveCardIndex(0); setIsFlipped(false); }}
-                                className={cn(
-                                    "flex flex-col items-center p-3 border transition-all duration-300 relative rounded-xl",
-                                    currentBox === box
-                                        ? "bg-amber-500/10 border-amber-500 ring-2 ring-amber-500/20"
-                                        : "bg-card hover:bg-accent/50"
-                                )}
-                            >
-                                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Box {i + 1}</span>
-                                <span className="text-xl font-black mt-0.5">{getBoxCount(box)}</span>
-                                {currentBox === box && (
-                                    <motion.div layoutId="activeBox" className="absolute bottom-0 left-0 right-0 h-1 bg-amber-500 rounded-b-xl" />
-                                )}
-                            </button>
-                        ))}
-                    </div>
+            <div className="h-full flex flex-col max-w-5xl mx-auto w-full p-6 gap-8">
 
-                    {/* Card Area */}
-                    <div className="flex-1 flex flex-col items-center justify-center relative">
-                        <AnimatePresence mode="wait">
-                            {cards.length === 0 ? (
-                                <div className="text-center text-muted-foreground text-sm animate-pulse">
-                                    No cards found for this collection.
-                                </div>
-                            ) : !isSessionComplete && activeCard ? (
-                                <div className="w-full max-w-xl">
-                                    <motion.div
-                                        key={activeCard.idx}
-                                        initial={{ y: 20, opacity: 0 }}
-                                        animate={{ y: 0, opacity: 1 }}
-                                        exit={{ y: -20, opacity: 0 }}
-                                        className={cn(
-                                            "relative w-full cursor-pointer transition-transform duration-500 preserve-3d",
-                                            isFlipped ? "rotate-y-180" : ""
-                                        )}
-                                        style={{ aspectRatio: '1.6/1' }}
-                                        onClick={() => setIsFlipped(p => !p)}
-                                    >
-                                        {/* Front */}
-                                        <div className="absolute inset-0 bg-card border-2 rounded-[2rem] shadow-2xl p-8 flex flex-col items-center justify-center text-center backface-hidden ring-1 ring-black/5">
-                                            <Badge variant="outline" className="mb-4 uppercase tracking-widest text-[9px] font-bold text-amber-600 border-amber-200">
-                                                Box {displayBoxes.indexOf(activeCard.box) + 1}
-                                            </Badge>
-                                            <h3 className="text-xl font-black leading-tight text-slate-900">{activeCard.question}</h3>
-                                            <p className="absolute bottom-6 text-[9px] text-muted-foreground font-black uppercase tracking-[0.2em]">Tap to flip</p>
-                                        </div>
-                                        {/* Back */}
-                                        <div className="absolute inset-0 bg-slate-900 text-white rounded-[2rem] shadow-2xl p-8 flex items-center justify-center text-center rotate-y-180 backface-hidden">
-                                            <p className="text-lg leading-relaxed font-medium">{activeCard.answer}</p>
-                                        </div>
-                                    </motion.div>
-
-                                    {isFlipped && (
-                                        <div className="flex gap-4 mt-8 justify-center animate-in fade-in zoom-in duration-300">
-                                            <Button variant="outline" size="lg"
-                                                className="flex-1 h-14 rounded-2xl border-destructive/20 hover:bg-destructive/10 text-destructive font-black uppercase tracking-widest text-[10px]"
-                                                onClick={e => { e.stopPropagation(); handleRate(false); }}>
-                                                <X className="mr-2 w-5 h-5" /> Incorrect
-                                            </Button>
-                                            <Button size="lg"
-                                                className="flex-1 h-14 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-amber-500/20"
-                                                onClick={e => { e.stopPropagation(); handleRate(true); }}>
-                                                <Check className="mr-2 w-5 h-5" /> Correct
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="text-center space-y-6">
-                                    <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
-                                        <Check className="w-8 h-8" weight="bold" />
-                                    </div>
-                                    <h2 className="text-2xl font-black">Box {displayBoxes.indexOf(currentBox) + 1} Cleared!</h2>
-                                    <Button onClick={() => setActiveCardIndex(0)} className="rounded-xl font-bold">Review Again</Button>
-                                </div>
+                {/* --- Top: Box Visualization --- */}
+                <div className="grid grid-cols-5 gap-4">
+                    {[1, 2, 3, 4, 5].map(box => (
+                        <button
+                            key={box}
+                            onClick={() => {
+                                setCurrentBox(box);
+                                setActiveCardIndex(0);
+                                setIsFlipped(false);
+                            }}
+                            className={cn(
+                                "flex flex-col items-center p-4 border transition-all duration-300 relative overflow-hidden",
+                                currentBox === box
+                                    ? "bg-amber-500/10 border-amber-500 ring-2 ring-amber-500/20"
+                                    : "bg-card hover:bg-accent/50 hover:border-amber-300/50"
                             )}
-                        </AnimatePresence>
-                    </div>
-
-                    {/* Progress */}
-                    <div className="max-w-xl mx-auto w-full space-y-2 mt-auto">
-                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                            <span>Progress</span>
-                            <span>{Math.round(progressValue)}%</span>
-                        </div>
-                        <Progress value={progressValue} className="h-1.5" />
-                    </div>
+                        >
+                            <span className="text-xs font-bold text-muted-foreground uppercase mb-1">Box {box}</span>
+                            <span className="text-2xl font-black text-foreground">{getBoxCount(box)}</span>
+                            {currentBox === box && (
+                                <motion.div
+                                    layoutId="activeBox"
+                                    className="absolute bottom-0 left-0 right-0 h-1 bg-amber-500"
+                                />
+                            )}
+                        </button>
+                    ))}
                 </div>
+
+                {/* --- Main Area --- */}
+                <div className="flex-1 flex flex-col items-center justify-center relative min-h-[400px]">
+                    <AnimatePresence mode="wait">
+                        {!isSessionComplete ? (
+                            <div className="w-full max-w-2xl perspective-1000">
+                                <motion.div
+                                    key={activeCard.id}
+                                    initial={{ x: 100, opacity: 0 }}
+                                    animate={{ x: 0, opacity: 1 }}
+                                    exit={{ x: -100, opacity: 0, transition: { duration: 0.2 } }}
+                                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                    className={cn(
+                                        "relative w-full aspect-[3/2] cursor-pointer preserve-3d transition-transform duration-500",
+                                        isFlipped ? "rotate-y-180" : ""
+                                    )}
+                                    onClick={() => setIsFlipped(!isFlipped)}
+                                >
+                                    {/* Front */}
+                                    <div className="absolute inset-0 backface-hidden bg-card border shadow-xl p-10 flex flex-col items-center justify-center text-center">
+                                        <Badge variant="outline" className="mb-6">{activeCard.topic}</Badge>
+                                        <h3 className="text-2xl md:text-3xl font-bold leading-tight">
+                                            {activeCard.question}
+                                        </h3>
+                                        <p className="absolute bottom-6 text-xs text-muted-foreground font-medium uppercase tracking-widest">
+                                            Click to Flip
+                                        </p>
+                                    </div>
+
+                                    {/* Back */}
+                                    <div className="absolute inset-0 backface-hidden rotate-y-180 bg-slate-900 text-slate-50 border shadow-xl p-10 flex flex-col items-center justify-center text-center">
+                                        <div className="prose prose-invert prose-lg">
+                                            <p>{activeCard.answer}</p>
+                                        </div>
+                                    </div>
+                                </motion.div>
+
+                                {/* Controls */}
+                                <div className="flex items-center justify-center gap-4 mt-12">
+                                    <Button
+                                        size="lg"
+                                        variant="outline"
+                                        className="w-32 hover:bg-red-100 hover:text-red-700 hover:border-red-200 dark:hover:bg-red-900/30"
+                                        onClick={() => handleRate(false)}
+                                    >
+                                        <X className="w-4 h-4 mr-2" /> Incorrect
+                                    </Button>
+                                    <Button
+                                        size="lg"
+                                        className="w-32 bg-green-600 hover:bg-green-700 text-white"
+                                        onClick={() => handleRate(true)}
+                                    >
+                                        <Check className="w-4 h-4 mr-2" /> Correct
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center space-y-6 animate-in zoom-in duration-300">
+                                <div className="w-24 h-24 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-4">
+                                    <Check className="w-12 h-12" />
+                                </div>
+                                <h2 className="text-3xl font-bold">Box {currentBox} Complete!</h2>
+                                <p className="text-muted-foreground max-w-md mx-auto">
+                                    You've reviewed all cards in this box. Great job keeping your memory fresh.
+                                </p>
+                                <Button size="lg" onClick={() => {
+                                    setCurrentBox(1);
+                                    setActiveCardIndex(0);
+                                }}>
+                                    <ArrowCounterClockwise className="w-4 h-4 mr-2" /> Review Box 1
+                                </Button>
+                            </div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+                {/* --- Progress Bar --- */}
+                <div className="w-full max-w-2xl mx-auto space-y-2">
+                    <div className="flex justify-between text-xs font-medium text-muted-foreground">
+                        <span>Progress</span>
+                        <span>{Math.min(activeCardIndex, boxCards.length)} / {boxCards.length}</span>
+                    </div>
+                    <Progress value={(activeCardIndex / boxCards.length) * 100} className="h-2" />
+                </div>
+
             </div>
         </StudySessionLayout>
     );

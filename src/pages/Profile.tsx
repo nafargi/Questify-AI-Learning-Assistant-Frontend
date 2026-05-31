@@ -17,10 +17,10 @@ import { Layout } from "@/components/layout/Layout";
 import { cn, getAvatarUrl } from "@/lib/utils";
 import { examResults } from "@/data/mockData";
 import { useAuth } from "@/contexts/AuthContext";
+import { useGlobalState } from "@/contexts/GlobalStateContext";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { collectionsService, Collection } from "@/services/collectionsService";
-import { authService } from "@/services/authService";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -35,7 +35,8 @@ import {
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { user, refreshProfile, avatarUrl } = useAuth();
+  const { user } = useAuth();
+  const { avatarUrl } = useGlobalState();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);

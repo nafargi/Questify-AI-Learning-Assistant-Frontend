@@ -61,7 +61,7 @@ export function usePlanner() {
     const { data, error } = await supabase
       .from('planner_tasks')
       .insert([{
-        user_id: user.id,
+        user_id: user.user_id,
         course_id: task.courseId || null,
         topic: task.topic,
         description: task.description || null,

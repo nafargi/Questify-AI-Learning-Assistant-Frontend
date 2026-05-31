@@ -1,52 +1,49 @@
-import axios from 'axios';
+// Axios-compatible client using native fetch — used by authService.ts
+const BASE_URL = "http://localhost:8000/api";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+function getToken() {
+  return localStorage.getItem("questify-token") || localStorage.getItem("access_token");
+}
 
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 120000, // 120 seconds for long AI tasks
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+async function request(method: string, url: string, body?: unknown, options: any = {}) {
+  const isFormData = body instanceof FormData;
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (!isFormData && body) headers["Content-Type"] = "application/json";
 
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('access_token');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+  // Strip leading /api if url already starts with /api (authService passes full paths)
+  const path = url.startsWith("/api") ? url.slice(4) : url;
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers,
+    body: isFormData ? (body as FormData) : body ? JSON.stringify(body) : undefined,
+    ...options.responseType === "blob" ? {} : {},
+  });
+
+  if (options.responseType === "blob") {
+    if (!res.ok) throw { response: { status: res.status, data: {} } };
+    const blob = await res.blob();
+    return { status: res.status, headers: { "content-type": res.headers.get("content-type") }, data: blob };
   }
-);
 
-apiClient.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
-    // Verbose logging for debugging production errors
-    console.group(`🚨 API ERROR: ${error.config?.method?.toUpperCase()} ${error.config?.url}`);
-    if (error.response) {
-      console.error('Status:', error.response.status);
-      console.error('Data:', error.response.data);
-      console.error('Headers:', error.response.headers);
-    } else if (error.request) {
-      console.error('No Response Received. Request:', error.request);
-    } else {
-      console.error('Error Message:', error.message);
-    }
-    console.groupEnd();
-
-    if (error.response && error.response.status === 401) {
-      localStorage.removeItem('access_token');
-      window.location.href = '/auth';
-    }
-    return Promise.reject(error);
+  const json = await res.json();
+  if (!json.success) {
+    const err: any = new Error(json.message);
+    err.response = { status: res.status, data: json };
+    throw err;
   }
-);
+  // Wrap in axios-style envelope: { data: apiResponse }
+  return { status: res.status, data: json };
+}
+
+const apiClient = {
+  get:    (url: string, options?: any) => request("GET", url, undefined, options),
+  post:   (url: string, body?: unknown) => request("POST", url, body),
+  patch:  (url: string, body?: unknown) => request("PATCH", url, body),
+  put:    (url: string, body?: unknown) => request("PUT", url, body),
+  delete: (url: string) => request("DELETE", url),
+};
 
 export default apiClient;

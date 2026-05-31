@@ -25,7 +25,7 @@ export interface Question {
   type: 'mcq' | 'true-false' | 'fill-blank' | 'matching' | 'coding' | 'short-answer';
   difficulty: 'easy' | 'medium' | 'hard';
   question: string;
-  options?: string[];
+  options?: string[]; 
   correctAnswer: string | string[];
   explanation: string;
   timeEstimate: number;
@@ -383,13 +383,13 @@ export const noteMethods: NoteMethod[] = [
   { id: 'cornell', name: 'Cornell Method', description: 'Two-column format with cues/notes.', bestFor: 'Lectures', structure: ['Cue', 'Notes', 'Summary'], example: 'Standard fact capture.', icon: '📋', color: 'from-blue-500 to-indigo-500', layout: 'cornell' },
   { id: 'mindmap', name: 'Mind Mapping', description: 'Visual branching diagram.', bestFor: 'Visual learners', structure: ['Center', 'Branch', 'Sub-branch'], example: 'Relationship mapping.', icon: '🧠', color: 'from-purple-500 to-pink-500', layout: 'mindmap' },
   { id: 'outline', name: 'Outline Method', description: 'Hierarchical headings/bullets.', bestFor: 'Organized content', structure: ['Title', 'Heading', 'Bullet'], example: 'Step-by-step logic.', icon: '📑', color: 'from-green-500 to-teal-500', layout: 'outline' },
-  { id: 'flowchart', name: 'Flow Chart', description: 'Visual process flow.', bestFor: 'Algorithms', structure: ['Start', 'Process', 'End'], example: 'Logic sequencing.', icon: '🔄', color: 'from-cyan-500 to-blue-500', layout: 'flow' },
+  // { id: 'flowchart', name: 'Flow Chart', description: 'Visual process flow.', bestFor: 'Algorithms', structure: ['Start', 'Process', 'End'], example: 'Logic sequencing.', icon: '🔄', color: 'from-cyan-500 to-blue-500', layout: 'flow' },
   { id: 'boxing', name: 'Boxing Method', description: 'Grouped concepts in boxes.', bestFor: 'Comparing topics', structure: ['Box A', 'Box B'], example: 'Categorical separation.', icon: '📦', color: 'from-orange-500 to-amber-500', layout: 'boxing' },
   { id: 'charting', name: 'Charting Method', description: 'Table format comparisons.', bestFor: 'Facts/Categories', structure: ['Columns', 'Rows'], example: 'Feature comparison.', icon: '📊', color: 'from-rose-500 to-red-500', layout: 'charting' },
   { id: 'sentence', name: 'Sentence Method', description: 'One fact per line.', bestFor: 'Fast lectures', structure: ['Sent 1', 'Sent 2'], example: 'Rapid capture.', icon: '📝', color: 'from-slate-500 to-gray-500', layout: 'sentence' },
-  { id: 'zettelkasten', name: 'Zettelkasten', description: 'Atomic linked nodes.', bestFor: 'Knowledge web', structure: ['Atomic Note', 'Link'], example: 'Research network.', icon: '🔗', color: 'from-violet-500 to-purple-500', layout: 'zettelkasten' },
-  { id: 'feynman', name: 'Feynman Technique', description: 'Simple teaching method.', bestFor: 'Mastery', structure: ['Explain', 'Teach'], example: 'Plain language mastery.', icon: '💡', color: 'from-yellow-500 to-orange-500', layout: 'feynman' },
-  { id: 'sketchnote', name: 'Sketchnotes', description: 'Text + Visual art.', bestFor: 'Creative learners', structure: ['Draw', 'Icon', 'Text'], example: 'Visual memory aid.', icon: '🎨', color: 'from-pink-500 to-rose-500', layout: 'sketchnote' },
+  // { id: 'zettelkasten', name: 'Zettelkasten', description: 'Atomic linked nodes.', bestFor: 'Knowledge web', structure: ['Atomic Note', 'Link'], example: 'Research network.', icon: '🔗', color: 'from-violet-500 to-purple-500', layout: 'zettelkasten' },
+  // { id: 'feynman', name: 'Feynman Technique', description: 'Simple teaching method.', bestFor: 'Mastery', structure: ['Explain', 'Teach'], example: 'Plain language mastery.', icon: '💡', color: 'from-yellow-500 to-orange-500', layout: 'feynman' },
+  // { id: 'sketchnote', name: 'Sketchnotes', description: 'Text + Visual art.', bestFor: 'Creative learners', structure: ['Draw', 'Icon', 'Text'], example: 'Visual memory aid.', icon: '🎨', color: 'from-pink-500 to-rose-500', layout: 'sketchnote' },
 ];
 
 export interface Achievement { id: string; name: string; description: string; icon: string; unlockedAt?: string; progress?: number; }

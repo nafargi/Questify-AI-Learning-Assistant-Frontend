@@ -6,7 +6,8 @@ import {
     Download,
     Layout,
     CircleNotch,
-    Sparkle
+    Sparkle,
+    ArrowsClockwise
 } from "@phosphor-icons/react";
 import { noteMethods } from '@/data/mockData';
 import {
@@ -17,7 +18,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from 'sonner';
 import { noteService } from '@/services/noteService';
-import { jsPDF } from "jspdf";
 
 // Import supported renderers
 import { CornellNote } from '@/components/notes/CornellNote';
@@ -26,29 +26,58 @@ import { MindMapNote } from '@/components/notes/MindMapNote';
 import { ChartingNote } from '@/components/notes/ChartingNote';
 import { BoxingNote } from '@/components/notes/BoxingNote';
 import { SentenceNote } from '@/components/notes/SentenceNote';
+import { NoteContent } from '@/data/mockNotes';
+
+function toNoteContent(raw: any, methodId: string): NoteContent {
+  const base = {
+    id: raw.note_id ?? raw.id ?? "",
+    courseId: raw.collection_id ?? "",
+    title: raw.title ?? "Untitled",
+    date: raw.created_at ? new Date(raw.created_at).toLocaleDateString("en-US", { dateStyle: "medium" }) : "",
+    method: methodId as NoteContent["method"],
+  };
+  switch (methodId) {
+    case "cornell": return { ...base, cues: raw.cues ?? [], summary: raw.summary ?? "" };
+    case "outline": return { ...base, sections: (raw.sections ?? []).map((s: any) => ({ heading: s.heading, level: 1 as const, content: "", bullets: s.bullets ?? [] })) };
+    case "mindmap": return {
+      ...base, center: raw.root?.label ?? "",
+      branches: (raw.root?.children ?? []).map((c: any, i: number) => {
+        const colors = ["bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800","bg-blue-100 dark:bg-blue-900/30 text-blue-800","bg-purple-100 dark:bg-purple-900/30 text-purple-800","bg-orange-100 dark:bg-orange-900/30 text-orange-800"];
+        return { title: c.label, color: colors[i % colors.length], items: (c.children ?? []).map((cc: any) => cc.label) };
+      }),
+    };
+    case "boxing": return { ...base, boxes: (raw.boxes ?? []).map((b: any) => ({ title: b.title, color: "border-primary bg-primary/5", items: b.items ?? [] })) };
+    case "charting": return { ...base, headers: raw.columns ?? [], rows: raw.rows ?? [] };
+    case "sentence": return { ...base, sections: (raw.sections ?? []).map((s: any) => ({ content: s.content })) };
+    default: return base as NoteContent;
+  }
+}
 
 interface NoteRoomProps {
     topic: any;
     initialMethod: string;
     onClose: () => void;
+    onRegenerate?: (method: string) => Promise<void>;
 }
 
 const supportedMethodIds = ['sentence', 'boxing', 'cornell', 'outline', 'mindmap', 'charting'];
 const filteredMethods = noteMethods.filter(m => supportedMethodIds.includes(m.id));
 
-export default function NoteRoom({ topic, initialMethod, onClose }: NoteRoomProps) {
+export default function NoteRoom({ topic, initialMethod, onClose, onRegenerate }: NoteRoomProps) {
     const [currentMethod, setCurrentMethod] = useState(initialMethod);
     const [activeContent, setActiveContent] = useState<any>(topic[initialMethod] || null);
     const [isLoading, setIsLoading] = useState(false);
-    const [history, setHistory] = useState<Record<string, any>>({ [initialMethod]: topic[initialMethod] });
+    const [isRegenerating, setIsRegenerating] = useState(false);
+    // Seed history with the freshly passed content — no stale cache for the initial method
+    const [history, setHistory] = useState<Record<string, any>>({ [initialMethod]: topic[initialMethod] || null });
 
     const currentMethodInfo = filteredMethods.find(m => m.id === currentMethod);
 
     const fetchOtherMethod = useCallback(async (method: string) => {
         if (!topic.collectionId) return;
 
-        // If we already have it in history, don't fetch again (Fast rendering)
-        if (history[method]) {
+        // Use cached content only if it's non-null (null means not yet generated)
+        if (history[method] != null) {
             setActiveContent(history[method]);
             return;
         }
@@ -57,9 +86,8 @@ export default function NoteRoom({ topic, initialMethod, onClose }: NoteRoomProp
         try {
             console.log(`[NoteRoom] Fetching ${method} for collection ${topic.collectionId}`);
             const notes = await noteService.getNotes(method, topic.collectionId);
-            
-            // The note object itself contains the cues/sections/boxes
-            const content = (notes && notes.length > 0) ? notes[0] : null;
+            const raw = notes && notes.length > 0 ? notes[0] : null;
+            const content = raw ? toNoteContent(raw, method) : null;
 
             setHistory(prev => ({ ...prev, [method]: content }));
             setActiveContent(content);
@@ -76,6 +104,19 @@ export default function NoteRoom({ topic, initialMethod, onClose }: NoteRoomProp
             fetchOtherMethod(currentMethod);
         }
     }, [currentMethod]);
+
+    const handleRegenerate = async () => {
+        if (!onRegenerate) return;
+        setIsRegenerating(true);
+        try {
+            await onRegenerate(currentMethod);
+            // Clear cache so fetchOtherMethod fetches fresh content
+            setHistory(prev => { const next = { ...prev }; delete next[currentMethod]; return next; });
+            await fetchOtherMethod(currentMethod);
+        } finally {
+            setIsRegenerating(false);
+        }
+    };
 
     const handleDownload = () => {
         if (!activeContent) {
@@ -143,7 +184,7 @@ export default function NoteRoom({ topic, initialMethod, onClose }: NoteRoomProp
                         <h3 className="text-xl font-bold">No {currentMethodInfo?.name} Note Yet</h3>
                         <p className="text-muted-foreground max-w-sm mx-auto">
                             We couldn't find a note using this specific cognitive method for this topic.
-                            You can generate one by clicking <span className="font-bold text-primary">Launch Studio</span> in the main dashboard.
+                            You can generate one by clicking <span className="font-bold text-primary">Generate New</span> in the main dashboard.
                         </p>
                     </div>
                     <Button variant="outline" className="rounded-xl px-8" onClick={onClose}>
@@ -226,6 +267,18 @@ export default function NoteRoom({ topic, initialMethod, onClose }: NoteRoomProp
 
                     <div className="h-6 w-px bg-border mx-2 hidden sm:block" />
 
+                    {onRegenerate && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="rounded-full hover:bg-primary/10"
+                            onClick={handleRegenerate}
+                            disabled={isRegenerating || isLoading}
+                            title="Regenerate note"
+                        >
+                            <ArrowsClockwise className={cn("w-4 h-4", isRegenerating && "animate-spin")} />
+                        </Button>
+                    )}
                     <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary/10" onClick={handleDownload} title="Download as PDF">
                         <Download className="w-4 h-4" />
                     </Button>

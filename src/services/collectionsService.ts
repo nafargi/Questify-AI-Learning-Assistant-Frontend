@@ -1,33 +1,24 @@
-import apiClient from './apiClient';
+import { api } from "@/lib/api";
 
 export interface Collection {
   collection_id: string;
+  user_id: string;
   title: string;
-  description?: string;
-  created_at: string;
+  description: string;
+  confidence: number;
   icon?: string;
-  color?: string;
+  created_at: string;
 }
 
 export const collectionsService = {
   getCollections: async (): Promise<Collection[]> => {
-    const response = await apiClient.get('/api/collections/');
-    // Assuming backend returns { data: [...] } or just [...]
-    return response.data.data || response.data || [];
-  },
-
-  getCollection: async (id: string): Promise<Collection> => {
-    const response = await apiClient.get(`/api/collections/${id}`);
-    return response.data.data || response.data;
+    const res = await api.get<Collection[]>("/collections/");
+    if (!res.success) throw new Error(res.message);
+    return res.data;
   },
 
   deleteCollection: async (id: string): Promise<void> => {
-    await apiClient.delete(`/api/collections/${id}`);
+    const res = await api.delete(`/collections/${id}`);
+    if (!res.success) throw new Error(res.message);
   },
-
-  getCollectionChapters: async (collectionId: string): Promise<any[]> => {
-    const response = await apiClient.get(`/api/material/collections/${collectionId}/chapters`);
-    const data = response.data.data ?? response.data;
-    return Array.isArray(data) ? data : [];
-  }
 };

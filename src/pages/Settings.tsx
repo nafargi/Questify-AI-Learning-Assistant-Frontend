@@ -1,34 +1,34 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
   User,
+  Bell,
+  Shield,
+  Palette,
+  Globe,
+  CreditCard,
   Question,
   CaretRight,
-  Trash,
-  Camera,
+  Moon,
+  Sun,
+  SpeakerHigh,
+  Envelope,
+  DeviceMobile,
+  Check,
   CircleNotch,
 } from "@phosphor-icons/react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { cn, getAvatarUrl } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useGlobalState } from "@/contexts/GlobalStateContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { authService } from "@/services/authService";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { api } from "@/lib/api";
 
 interface SettingSection {
   id: string;
@@ -39,149 +39,78 @@ interface SettingSection {
 
 const sections: SettingSection[] = [
   { id: "account", label: "Account", icon: User, description: "Manage your account details" },
+  { id: "notifications", label: "Notifications", icon: Bell, description: "Configure alerts and reminders" },
+  { id: "appearance", label: "Appearance", icon: Palette, description: "Customize your experience" },
+  { id: "privacy", label: "Privacy & Security", icon: Shield, description: "Control your data and security" },
+  { id: "billing", label: "Billing & Plans", icon: CreditCard, description: "Manage subscription" },
   { id: "help", label: "Help & Support", icon: Question, description: "Get assistance" },
 ];
 
 export default function Settings() {
   const [activeSection, setActiveSection] = useState("account");
   const navigate = useNavigate();
-  const { user, logout, refreshProfile, avatarUrl } = useAuth();
-  
-  const [fullName, setFullName] = useState(user?.full_name || "");
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
-  
-  const memoizedAvatarUrl = useMemo(() => avatarUrl || getAvatarUrl(user?.avatar_url), [avatarUrl, user?.avatar_url]);
-  
+  const { signOut } = useAuth();
+  const { profile, profileLoading, updateProfile } = useGlobalState();
+
+  // Account form state — seeded from profile once loaded
+  const [fullName, setFullName] = useState("");
+  const [peakTime, setPeakTime] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Sync form when profile loads
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name);
+      setPeakTime(profile.peak_performance_time ?? "");
+    }
+  }, [profile]);
+
+  // Password form
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [savingPassword, setSavingPassword] = useState(false);
 
-  const handleUpdateProfile = async () => {
-    if (!fullName.trim()) {
-      toast.error("Name cannot be empty");
-      return;
-    }
+  const [settings, setSettings] = useState({
+    emailNotifications: true,
+    pushNotifications: true,
+    studyReminders: true,
+    examAlerts: true,
+    weeklyReports: true,
+    soundEffects: true,
+    darkMode: false,
+    language: "English",
+  });
 
-    setIsUpdating(true);
-    try {
-      await authService.updateProfile({ full_name: fullName });
-      toast.success("Profile updated successfully!");
-      await refreshProfile();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to update profile");
-    } finally {
-      setIsUpdating(false);
-    }
+  const updateSetting = (key: string, value: boolean) => {
+    setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File size must be less than 5MB");
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      console.log("[Settings] Uploading avatar: PUT /api/auth/user/profile/avatar");
-      await authService.updateAvatar(file);
-      toast.success("Avatar updated successfully!");
-      if (refreshProfile) await refreshProfile();
-    } catch (error: any) {
-      console.error("[Settings] Avatar upload error:", error);
-      toast.error(error.response?.data?.message || "Failed to upload avatar");
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    await updateProfile({
+      full_name: fullName || undefined,
+      peak_performance_time: peakTime || undefined,
+    });
+    setSavingProfile(false);
   };
 
-  const handleDeleteAvatar = async () => {
-    setIsUploading(true);
-    try {
-      console.log("[Settings] Removing avatar: DELETE /api/auth/user/profile/avatar");
-      await authService.deleteAvatar();
-      toast.success("Avatar removed");
-      if (refreshProfile) await refreshProfile();
-    } catch (error: any) {
-      console.error("[Settings] Avatar removal error:", error);
-      toast.error(error.response?.data?.message || "Failed to remove avatar");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  
-  const handleUpdatePassword = async () => {
-    if (!oldPassword || !newPassword || !confirmPassword) {
-      toast.error("Please fill in all password fields");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      toast.error("New passwords do not match");
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      toast.error("New password must be at least 8 characters");
-      return;
-    }
-
-    setIsUpdatingPassword(true);
-    try {
-      await authService.changePassword({
-        old_password: oldPassword,
-        new_password: newPassword
-      });
-      toast.success("Password updated successfully!");
-      setOldPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (error: any) {
-      console.error("Update password error:", error);
-      toast.error(error.response?.data?.message || "Failed to update password");
-    } finally {
-      setIsUpdatingPassword(false);
-    }
+  const handleChangePassword = async () => {
+    if (newPassword.length < 8) { toast.error("New password must be at least 8 characters"); return; }
+    if (newPassword !== confirmPassword) { toast.error("Passwords don't match"); return; }
+    setSavingPassword(true);
+    const res = await api.patch("/auth/user/password", { old_password: oldPassword, new_password: newPassword });
+    setSavingPassword(false);
+    if (!res.success) { toast.error(res.message); return; }
+    toast.success("Password changed");
+    setOldPassword(""); setNewPassword(""); setConfirmPassword("");
   };
 
   const handleDeleteAccount = async () => {
-    setIsDeleting(true);
-    try {
-      console.log('[handleDeleteAccount] Initiating account deletion...');
-      const response = await authService.deleteAccount();
-      console.log('[handleDeleteAccount] Success response:', response);
-      
-      // Clear all local data as requested
-      localStorage.clear();
-      
-      // Update auth state
-      await logout();
-      
-      toast.success("Account deleted successfully");
-      navigate("/auth");
-    } catch (error: any) {
-      console.error("[handleDeleteAccount] Full error details:", error);
-      
-      if (!error.response) {
-        // Network or CORS error (no response received)
-        toast.error("Deletion failed – network or CORS issue. Please try again later.");
-      } else {
-        // Backend responded with an error (4xx, 5xx)
-        const errorMessage = error.response?.data?.message || "Failed to delete account. Please try again later.";
-        toast.error(errorMessage);
-      }
-    } finally {
-      setIsDeleting(false);
-    }
+    if (!confirm("Permanently delete your account and all data? This cannot be undone.")) return;
+    const res = await api.delete("/auth/user");
+    if (!res.success) { toast.error(res.message); return; }
+    signOut(); navigate("/");
   };
 
   return (
@@ -198,7 +127,7 @@ export default function Settings() {
                   className={cn(
                     "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all",
                     activeSection === section.id
-                      ? "gradient-primary text-primary-foreground font-bold shadow-md"
+                      ? "gradient-primary text-primary-foreground"
                       : "hover:bg-muted text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -215,217 +144,362 @@ export default function Settings() {
           {/* Account Section */}
           {activeSection === "account" && (
             <div className="space-y-6 animate-fade-in">
-              <Card className="overflow-hidden border-none shadow-lg">
-                <CardHeader className="bg-muted/30">
+              <Card>
+                <CardHeader>
                   <CardTitle>Profile Information</CardTitle>
-                  <CardDescription>Update your personal details and avatar</CardDescription>
+                  <CardDescription>Update your personal details</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-8 pt-6">
-                  {/* Avatar Section */}
-                  <div className="flex flex-col sm:flex-row items-center gap-6">
-                    <div className="relative group">
-                      <Avatar className="w-24 h-24 border-4 border-background shadow-xl">
-                        <AvatarImage src={memoizedAvatarUrl} alt={user?.full_name} />
-                        <AvatarFallback className="gradient-primary text-2xl font-bold text-primary-foreground">
-                          {user?.full_name?.split(" ").map((n: string) => n[0]).join("") || "U"}
-                        </AvatarFallback>
-                      </Avatar>
-                      {isUploading && (
-                        <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center z-10">
-                          <CircleNotch className="w-8 h-8 text-white animate-spin" />
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex flex-col gap-2">
-                      <div className="flex gap-2">
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          className="hidden"
-                          accept="image/*"
-                          onChange={handleAvatarUpload}
-                        />
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={isUploading}
-                        >
-                          <Camera className="w-4 h-4 mr-2" />
-                          Change Photo
-                        </Button>
-                        {user?.avatar_url && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={handleDeleteAvatar}
-                            disabled={isUploading}
-                          >
-                            <Trash className="w-4 h-4 mr-2" />
-                            Remove
-                          </Button>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">Recommended: Square JPG, PNG up to 5MB</p>
-                    </div>
-                  </div>
-
-                  {/* Form Section */}
-                  <div className="grid md:grid-cols-2 gap-6">
+                <CardContent className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Full Name</Label>
-                      <Input 
-                        value={fullName} 
+                      <Label>Full Name</Label>
+                      <Input
+                        value={profileLoading ? "" : fullName || profile?.full_name || ""}
                         onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Your full name"
-                        className="bg-muted/30 border-none h-12"
+                        placeholder={profileLoading ? "Loading..." : "Your full name"}
+                        disabled={profileLoading}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email Address</Label>
-                      <Input value={user?.email || ""} disabled className="bg-muted h-12 border-none opacity-70" />
+                      <Label>Email</Label>
+                      <Input value={profile?.email ?? ""} disabled className="opacity-60" />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Peak Performance Time</Label>
+                      <Select
+                        value={peakTime || profile?.peak_performance_time || ""}
+                        onValueChange={setPeakTime}
+                        disabled={profileLoading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="When do you study best?" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {["morning", "afternoon", "evening", "night"].map((t) => (
+                            <SelectItem key={t} value={t} className="capitalize">{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-
-                  <div className="pt-4 flex justify-end">
-                    <Button 
-                      className="gradient-primary px-8 h-12 rounded-xl font-bold shadow-lg" 
-                      onClick={handleUpdateProfile}
-                      disabled={isUpdating}
-                    >
-                      {isUpdating ? <CircleNotch className="w-5 h-5 animate-spin" /> : "Save Changes"}
-                    </Button>
-                  </div>
+                  <Button className="gradient-primary" onClick={handleSaveProfile} disabled={savingProfile || profileLoading}>
+                    {savingProfile ? <CircleNotch className="w-4 h-4 animate-spin mr-2" /> : null}
+                    Save Changes
+                  </Button>
                 </CardContent>
               </Card>
 
-              {/* Password Section */}
-              <Card className="overflow-hidden border-none shadow-lg">
-                <CardHeader className="bg-muted/30">
+              <Card>
+                <CardHeader>
                   <CardTitle>Password</CardTitle>
-                  <CardDescription>Change your account password</CardDescription>
+                  <CardDescription>Change your password</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4 pt-6">
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Current Password</Label>
-                    <Input 
-                      type="password" 
-                      placeholder="••••••••" 
-                      className="bg-muted/30 border-none h-12" 
-                      value={oldPassword}
-                      onChange={(e) => setOldPassword(e.target.value)}
-                    />
+                    <Label>Current Password</Label>
+                    <Input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
                   </div>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">New Password</Label>
-                      <Input 
-                        type="password" 
-                        placeholder="••••••••" 
-                        className="bg-muted/30 border-none h-12" 
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                      />
+                      <Label>New Password</Label>
+                      <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Confirm New Password</Label>
-                      <Input 
-                        type="password" 
-                        placeholder="••••••••" 
-                        className="bg-muted/30 border-none h-12" 
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                      />
+                      <Label>Confirm Password</Label>
+                      <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
                     </div>
                   </div>
-                  <div className="pt-4 flex justify-end">
-                    <Button 
-                      variant="outline" 
-                      className="px-8 h-12 rounded-xl font-bold" 
-                      onClick={handleUpdatePassword}
-                      disabled={isUpdatingPassword}
-                    >
-                      {isUpdatingPassword ? <CircleNotch className="w-5 h-5 animate-spin" /> : "Update Password"}
-                    </Button>
+                  <Button variant="outline" onClick={handleChangePassword} disabled={savingPassword || !oldPassword || !newPassword}>
+                    {savingPassword ? <CircleNotch className="w-4 h-4 animate-spin mr-2" /> : null}
+                    Update Password
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="p-4 rounded-xl border border-destructive/20 bg-destructive/5 flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-sm">Delete Account</p>
+                      <p className="text-xs text-muted-foreground">Permanently delete your account and all data</p>
+                    </div>
+                    <Button variant="destructive" size="sm" onClick={handleDeleteAccount}>Delete</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Notifications Section */}
+          {activeSection === "notifications" && (
+            <div className="space-y-6 animate-fade-in">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Envelope className="w-5 h-5" />
+                    Email Notifications
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                    <div>
+                      <p className="font-medium text-sm">Study Reminders</p>
+                      <p className="text-xs text-muted-foreground">Get reminded about scheduled study sessions</p>
+                    </div>
+                    <Switch
+                      checked={settings.studyReminders}
+                      onCheckedChange={(v) => updateSetting("studyReminders", v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                    <div>
+                      <p className="font-medium text-sm">Exam Alerts</p>
+                      <p className="text-xs text-muted-foreground">Notifications about upcoming exams</p>
+                    </div>
+                    <Switch
+                      checked={settings.examAlerts}
+                      onCheckedChange={(v) => updateSetting("examAlerts", v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                    <div>
+                      <p className="font-medium text-sm">Weekly Progress Reports</p>
+                      <p className="text-xs text-muted-foreground">Summary of your weekly performance</p>
+                    </div>
+                    <Switch
+                      checked={settings.weeklyReports}
+                      onCheckedChange={(v) => updateSetting("weeklyReports", v)}
+                    />
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Danger Zone */}
-              <Card className="border-destructive/20 bg-destructive/5 overflow-hidden">
+              <Card>
                 <CardHeader>
-                  <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                  <CardDescription>Permanently delete your account and all associated data</CardDescription>
+                  <CardTitle className="flex items-center gap-2">
+                    <DeviceMobile className="w-5 h-5" />
+                    Push Notifications
+                  </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" className="font-bold">
-                        <Trash className="w-4 h-4 mr-2" />
-                        Delete Account
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete your account
-                          and remove your data from our servers.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={(e) => {
-                            e.preventDefault(); // Prevent dialog from closing automatically
-                            handleDeleteAccount();
-                          }}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90 min-w-[140px]"
-                          disabled={isDeleting}
-                        >
-                          {isDeleting ? (
-                            <div className="flex items-center gap-2">
-                              <CircleNotch className="w-4 h-4 animate-spin" />
-                              <span>Deleting...</span>
-                            </div>
-                          ) : (
-                            "Delete Permanently"
-                          )}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                    <div>
+                      <p className="font-medium text-sm">Enable Push Notifications</p>
+                      <p className="text-xs text-muted-foreground">Receive instant alerts on your device</p>
+                    </div>
+                    <Switch
+                      checked={settings.pushNotifications}
+                      onCheckedChange={(v) => updateSetting("pushNotifications", v)}
+                    />
+                  </div>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <SpeakerHigh className="w-5 h-5" />
+                    Sound Effects
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                    <div>
+                      <p className="font-medium text-sm">Sound Effects</p>
+                      <p className="text-xs text-muted-foreground">Play sounds for actions and alerts</p>
+                    </div>
+                    <Switch
+                      checked={settings.soundEffects}
+                      onCheckedChange={(v) => updateSetting("soundEffects", v)}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Appearance Section */}
+          {activeSection === "appearance" && (
+            <div className="space-y-6 animate-fade-in">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Theme</CardTitle>
+                  <CardDescription>Choose your preferred theme</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      onClick={() => updateSetting("darkMode", false)}
+                      className={cn(
+                        "p-6 rounded-2xl border text-left transition-all",
+                        !settings.darkMode ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                      )}
+                    >
+                      <Sun className="w-8 h-8 text-warning mb-3" />
+                      <h4 className="font-semibold">Light Mode</h4>
+                      <p className="text-xs text-muted-foreground">Clean and bright interface</p>
+                    </button>
+                    <button
+                      onClick={() => updateSetting("darkMode", true)}
+                      className={cn(
+                        "p-6 rounded-2xl border text-left transition-all",
+                        settings.darkMode ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                      )}
+                    >
+                      <Moon className="w-8 h-8 text-secondary mb-3" />
+                      <h4 className="font-semibold">Dark Mode</h4>
+                      <p className="text-xs text-muted-foreground">Easy on the eyes</p>
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Globe className="w-5 h-5" />
+                    Language
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-3">
+                    {["English", "Amharic", "Afaan Oromo", "German", "Chinese", "Arabic"].map((lang) => (
+                      <button
+                        key={lang}
+                        onClick={() => setSettings((prev) => ({ ...prev, language: lang }))}
+                        className={cn(
+                          "p-4 rounded-xl border text-center transition-all",
+                          settings.language === lang ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                        )}
+                      >
+                        <span className="text-sm font-medium">{lang}</span>
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Billing Section */}
+          {activeSection === "billing" && (
+            <div className="space-y-6 animate-fade-in">
+              <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-secondary/5">
+                <CardHeader>
+                  <CardTitle>Current Plan</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-2xl font-bold">Free Plan</h3>
+                      <p className="text-muted-foreground">Basic features with limited exams</p>
+                    </div>
+                    <Button className="gradient-primary" onClick={() => navigate('/billing')}>Upgrade to Pro</Button>
+                  </div>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="p-4 rounded-xl bg-background/50">
+                      <p className="text-2xl font-bold">10</p>
+                      <p className="text-xs text-muted-foreground">Exams per month</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-background/50">
+                      <p className="text-2xl font-bold">5</p>
+                      <p className="text-xs text-muted-foreground">Courses</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-background/50">
+                      <p className="text-2xl font-bold">Limited</p>
+                      <p className="text-xs text-muted-foreground">AI Features</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Questify Pro</CardTitle>
+                  <CardDescription>Unlock all premium features</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="p-6 rounded-2xl gradient-primary text-primary-foreground mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-3xl font-bold">$9.99<span className="text-lg font-normal">/month</span></h3>
+                      <Button variant="secondary" size="lg" onClick={() => toast.info("Redirecting to checkout...")}>Subscribe Now</Button>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      {[
+                        "Unlimited exams",
+                        "All question types",
+                        "Advanced AI insights",
+                        "Priority support",
+                        "Export to PDF",
+                        "Custom study plans",
+                      ].map((feature) => (
+                        <div key={feature} className="flex items-center gap-2">
+                          <Check className="w-4 h-4" />
+                          <span className="text-sm">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Privacy Section */}
+          {activeSection === "privacy" && (
+            <div className="space-y-6 animate-fade-in">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Data Privacy</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                    <div>
+                      <p className="font-medium text-sm">Share usage data</p>
+                      <p className="text-xs text-muted-foreground">Help us improve Questify</p>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/50">
+                    <div>
+                      <p className="font-medium text-sm">Personalized recommendations</p>
+                      <p className="text-xs text-muted-foreground">Get AI-powered study suggestions</p>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                </CardContent>
+              </Card>
+
+
             </div>
           )}
 
           {/* Help Section */}
           {activeSection === "help" && (
             <div className="space-y-6 animate-fade-in">
-              <Card className="border-none shadow-lg">
+              <Card>
                 <CardHeader>
                   <CardTitle>Help & Support</CardTitle>
-                  <CardDescription>Need assistance with Questify?</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {[
-                    { title: "Getting Started Guide", desc: "Learn the basics of Questify AI" },
-                    { title: "FAQ", desc: "Common questions about exams and credits" },
-                    { title: "Contact Support", desc: "Get help from our technical team" },
-                    { title: "Report a Bug", desc: "Help us improve your experience" },
+                    { title: "Getting Started Guide", desc: "Learn the basics of Questify" },
+                    { title: "FAQ", desc: "Common questions answered" },
+                    { title: "Contact Support", desc: "Get help from our team" },
+                    { title: "Report a Bug", desc: "Help us fix issues" },
                   ].map((item) => (
                     <button
                       key={item.title}
-                      className="w-full flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted transition-all group"
+                      className="w-full flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
                     >
                       <div className="text-left">
-                        <p className="font-bold text-sm group-hover:text-primary transition-colors">{item.title}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{item.desc}</p>
+                        <p className="font-medium text-sm">{item.title}</p>
+                        <p className="text-xs text-muted-foreground">{item.desc}</p>
                       </div>
-                      <CaretRight className="w-5 h-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                      <CaretRight className="w-5 h-5 text-muted-foreground" />
                     </button>
                   ))}
                 </CardContent>

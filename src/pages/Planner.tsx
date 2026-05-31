@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Layout } from "@/components/layout/Layout";
 import { cn } from "@/lib/utils";
-import { weeklyPlan, courses } from "@/data/mockData";
+import { weeklyPlan, studentProfile, courses } from "@/data/mockData";
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -144,7 +144,21 @@ export default function Planner() {
 
           {/* AI Insight Column */}
           <div className="space-y-6">
-
+            <Card className="bg-primary/5 border-primary/20 overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-primary">
+                  <Target weight="fill" /> Daily Target
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-4xl font-black mb-2">4.5h</div>
+                <p className="text-sm text-muted-foreground mb-4">Focused work scheduled for today.</p>
+                <div className="h-2 bg-background rounded-full overflow-hidden">
+                  <div className="h-full w-[65%] bg-primary rounded-full" />
+                </div>
+              </CardContent>
+            </Card>
 
             <div className="space-y-4">
               <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground ml-1">Suggestions</h3>

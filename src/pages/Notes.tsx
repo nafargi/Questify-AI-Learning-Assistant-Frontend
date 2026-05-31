@@ -23,17 +23,50 @@ import NoteRoom from "./NoteRoom";
 import { toast } from "sonner";
 import { collectionsService, Collection } from "@/services/collectionsService";
 import { noteService } from "@/services/noteService";
+import { NoteContent } from "@/data/mockNotes";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { jsPDF } from "jspdf";
 
 // Filter only the 6 specified methods
 const supportedMethodIds = ['sentence', 'boxing', 'outline', 'mindmap', 'charting', 'cornell'];
 const filteredMethods = noteMethods.filter(m => supportedMethodIds.includes(m.id)).sort((a, b) => supportedMethodIds.indexOf(a.id) - supportedMethodIds.indexOf(b.id));
+
+// Map raw API note response → NoteContent shape expected by renderers
+function toNoteContent(raw: any, methodId: string): NoteContent {
+  const base = {
+    id: raw.note_id ?? raw.id ?? "",
+    courseId: raw.collection_id ?? "",
+    title: raw.title ?? "Untitled",
+    date: raw.created_at ? new Date(raw.created_at).toLocaleDateString("en-US", { dateStyle: "medium" }) : "",
+    method: methodId as NoteContent["method"],
+  };
+  switch (methodId) {
+    case "cornell":
+      return { ...base, cues: raw.cues ?? [], summary: raw.summary ?? "" };
+    case "outline":
+      return { ...base, sections: (raw.sections ?? []).map((s: any) => ({ heading: s.heading, level: 1 as const, content: "", bullets: s.bullets ?? [] })) };
+    case "mindmap":
+      return {
+        ...base, center: raw.root?.label ?? "",
+        branches: (raw.root?.children ?? []).map((c: any, i: number) => {
+          const colors = ["bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-100", "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-100", "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-100", "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-100"];
+          return { title: c.label, color: colors[i % colors.length], items: (c.children ?? []).map((cc: any) => cc.label) };
+        }),
+      };
+    case "boxing":
+      return { ...base, boxes: (raw.boxes ?? []).map((b: any) => ({ title: b.title, color: "border-primary bg-primary/5", items: b.items ?? [] })) };
+    case "charting":
+      return { ...base, headers: raw.columns ?? [], rows: raw.rows ?? [] };
+    case "sentence":
+      return { ...base, sections: (raw.sections ?? []).map((s: any) => ({ content: s.content })) };
+    default:
+      return base as NoteContent;
+  }
+}
 
 // Production implementation with real API integration
 
@@ -121,12 +154,14 @@ export default function Notes() {
 
     setIsGenerating(true);
     try {
-      // POST /api/notes/{method}
-      await noteService.generateNote(selectedMethodId, selectedCollectionId);
+      const generated = await noteService.generateNote(selectedMethodId, selectedCollectionId);
       toast.success("Note generated successfully!");
-
-      // On success, refresh the list via GET
       await fetchNotes();
+
+      // Open the freshly generated note directly so NoteRoom shows new content
+      if (generated) {
+        handleOpenNote(generated);
+      }
     } catch (error: any) {
       console.error(`[Notes Hub] Launch failed:`, error);
       const methodName = filteredMethods.find(m => m.id === selectedMethodId)?.name || selectedMethodId;
@@ -195,14 +230,14 @@ export default function Notes() {
   };
 
   const handleOpenNote = (note: any) => {
+    const content = toNoteContent(note, selectedMethodId);
     const transformedTopic = {
-      id: note.id || note.note_id,
-      title: note.title || "Generated Note",
+      id: content.id,
+      title: content.title,
       courseId: "AI-Studio",
-      [selectedMethodId]: note,
-      collectionId: selectedCollectionId
+      [selectedMethodId]: content,
+      collectionId: selectedCollectionId,
     };
-
     setActiveTopic(transformedTopic);
     setActiveMethod(selectedMethodId);
     setIsNoteRoomOpen(true);
@@ -219,6 +254,9 @@ export default function Notes() {
           topic={activeTopic}
           initialMethod={activeMethod}
           onClose={() => setIsNoteRoomOpen(false)}
+          onRegenerate={async (method) => {
+            await noteService.generateNote(method, selectedCollectionId);
+          }}
         />
       </Layout>
     );
@@ -324,7 +362,7 @@ export default function Notes() {
                       </div>
                       <h3 className="text-lg font-bold mb-2">No notes yet</h3>
                       <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
-                        No notes yet. Click 'Launch Studio' to generate one.
+                        No notes yet. Click 'Generate New' to generate one.
                       </p>
                     </Card>
                   ) : (
@@ -424,7 +462,7 @@ export default function Notes() {
                 className="rounded-xl px-8 h-12 gap-2 font-bold shadow-lg shadow-primary/20"
               >
                 {isGenerating ? <CircleNotch className="w-4 h-4 animate-spin" /> : <Sparkle className="w-4 h-4" />}
-                Launch Studio
+                Generate New
               </Button>
             </div>
           </div>

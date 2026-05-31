@@ -1,4 +1,4 @@
-import { NoteContent } from "@/types/notes";
+import { NoteContent } from "@/data/mockNotes";
 import { cn } from "@/lib/utils";
 
 export const SentenceNote = ({ content }: { content: NoteContent }) => {
